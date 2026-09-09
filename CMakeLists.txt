@@ -27,18 +27,41 @@ target_include_directories(
         $<INSTALL_INTERFACE:include>
 )
 
+set(
+    QIVEN_FOUNDATION_PUBLIC_HEADERS
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/qiven/architecture.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/qiven/compiler.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/qiven/config.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/qiven/platform.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/qiven/types.hpp
+)
+
 target_sources(
     qiven-foundation
     INTERFACE
         FILE_SET HEADERS
         BASE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/include
-        FILES
-            ${CMAKE_CURRENT_SOURCE_DIR}/include/qiven/architecture.hpp
-            ${CMAKE_CURRENT_SOURCE_DIR}/include/qiven/compiler.hpp
-            ${CMAKE_CURRENT_SOURCE_DIR}/include/qiven/config.hpp
-            ${CMAKE_CURRENT_SOURCE_DIR}/include/qiven/platform.hpp
-            ${CMAKE_CURRENT_SOURCE_DIR}/include/qiven/types.hpp
+        FILES ${QIVEN_FOUNDATION_PUBLIC_HEADERS}
 )
+
+if(CMAKE_GENERATOR MATCHES "^Visual Studio")
+    add_custom_target(
+        qiven-foundation-headers
+        SOURCES ${QIVEN_FOUNDATION_PUBLIC_HEADERS}
+    )
+
+    set_target_properties(
+        qiven-foundation-headers
+        PROPERTIES
+            FOLDER "Foundation"
+    )
+
+    source_group(
+        TREE "${CMAKE_CURRENT_SOURCE_DIR}/include"
+        PREFIX "Header Files"
+        FILES ${QIVEN_FOUNDATION_PUBLIC_HEADERS}
+    )
+endif()
 
 option(QIVEN_BUILD_TESTS "Build Qiven Foundation tests" ${PROJECT_IS_TOP_LEVEL})
 
