@@ -33,7 +33,11 @@ target_sources(
         FILE_SET HEADERS
         BASE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/include
         FILES
+            ${CMAKE_CURRENT_SOURCE_DIR}/include/qiven/architecture.hpp
+            ${CMAKE_CURRENT_SOURCE_DIR}/include/qiven/compiler.hpp
             ${CMAKE_CURRENT_SOURCE_DIR}/include/qiven/config.hpp
+            ${CMAKE_CURRENT_SOURCE_DIR}/include/qiven/platform.hpp
+            ${CMAKE_CURRENT_SOURCE_DIR}/include/qiven/types.hpp
 )
 
 option(QIVEN_BUILD_TESTS "Build Qiven Foundation tests" ${PROJECT_IS_TOP_LEVEL})
