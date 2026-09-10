@@ -35,11 +35,21 @@ if errorlevel 1 goto :error
 git diff --check
 if errorlevel 1 goto :error_changed
 
-del /q "%PATCH%"
+echo [Qiven] Formatting C/C++ sources...
+call "%ROOT%\tools\format.cmd"
+if errorlevel 1 goto :error_changed
+
+call "%ROOT%\tools\format-check.cmd"
+if errorlevel 1 goto :error_changed
+
+git diff --check
+if errorlevel 1 goto :error_changed
 
 echo [Qiven] Regenerating Visual Studio solution...
 call "%ROOT%\tools\gen-vs2022-x64.cmd"
 if errorlevel 1 goto :error_changed
+
+del /q "%PATCH%"
 
 popd
 echo [Qiven] Patch applied successfully.

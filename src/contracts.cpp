@@ -6,21 +6,21 @@
 #include <cstdlib>
 
 #if QIVEN_PLATFORM_WINDOWS
-#    ifndef VC_EXTRALEAN
-#        define VC_EXTRALEAN
-#    endif
-#    ifndef WIN32_LEAN_AND_MEAN
-#        define WIN32_LEAN_AND_MEAN
-#    endif
-#    ifndef NOMINMAX
-#        define NOMINMAX
-#    endif
-#    ifndef STRICT
-#        define STRICT
-#    endif
-#    include <Windows.h>
+    #ifndef VC_EXTRALEAN
+        #define VC_EXTRALEAN
+    #endif
+    #ifndef WIN32_LEAN_AND_MEAN
+        #define WIN32_LEAN_AND_MEAN
+    #endif
+    #ifndef NOMINMAX
+        #define NOMINMAX
+    #endif
+    #ifndef STRICT
+        #define STRICT
+    #endif
+    #include <Windows.h>
 #else
-#    include <unistd.h>
+    #include <unistd.h>
 #endif
 
 namespace qiven::detail
@@ -75,7 +75,7 @@ void break_if_debugger_attached() noexcept
 
 [[noreturn]] void contract_fail(const char* kind, const char* expression, std::source_location location) noexcept
 {
-    char message[message_capacity]{};
+    char message[message_capacity] {};
 
     const int result = expression != nullptr
                            ? std::snprintf(

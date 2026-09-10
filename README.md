@@ -19,26 +19,33 @@ compiler and architecture support locked down by CI as the implementation grows.
 Visual Studio is a first-class development environment for Qiven Foundation. The Windows configuration is defined once in
 `CMakePresets.json`.
 
-The quickest path is to double-click:
+Windows development uses the pinned tools from `qiven-toolchain-win`. By default, the toolchain repository is expected next
+to `qiven-foundation`. Set `QIVEN_TOOLCHAIN_ROOT` when using a different workspace layout.
+
+Generate the Visual Studio solution with:
 
 ```text
 tools\gen-vs2022-x64.cmd
 ```
 
-It generates `build/vs2022-x64/qiven-foundation.sln` and opens the solution. When tests are enabled,
+It generates `build/vs2022-x64/qiven-foundation.sln` without launching Visual Studio. When tests are enabled,
 `qiven-foundation-smoke` is configured as the Visual Studio startup project so `F5` starts an executable rather than the
 CMake `ALL_BUILD` target.
 
-Equivalent command-line usage is:
+Format tracked C/C++ sources with:
 
-```bash
-cmake --preset vs2022-x64
-cmake --build --preset vs2022-x64-debug
-ctest --preset vs2022-x64-debug
+```text
+tools\format.cmd
 ```
 
-Visual Studio 2022 can also open the repository folder directly and consume the same CMake preset without generating or
-opening the `.sln` manually.
+Check formatting without modifying files with:
+
+```text
+tools\format-check.cmd
+```
+
+Visual Studio should use `qiven-toolchain-win\bin\clang-format.exe` as its custom clang-format executable so IDE formatting
+and command-line formatting use the same version.
 
 ### Portable command line
 
