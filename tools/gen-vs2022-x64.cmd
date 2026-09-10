@@ -26,8 +26,8 @@ if not exist "%SOLUTION%" (
 
 popd
 
-echo [Qiven] Opening Visual Studio solution...
-start "" "%SOLUTION%"
+echo [Qiven] Generation complete:
+echo %SOLUTION%
 exit /b 0
 
 :error

@@ -36,12 +36,28 @@ set_target_properties(
 
 add_test(NAME qiven-foundation.platform-primitives COMMAND qiven-foundation-platform-primitives)
 
+add_executable(qiven-foundation-contracts contracts.cpp)
+
+target_link_libraries(qiven-foundation-contracts PRIVATE qiven::foundation)
+qiven_enable_test_warnings(qiven-foundation-contracts)
+
+set_target_properties(
+    qiven-foundation-contracts
+    PROPERTIES
+        CXX_EXTENSIONS OFF
+        FOLDER "Tests"
+        VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+)
+
+add_test(NAME qiven-foundation.contracts COMMAND qiven-foundation-contracts)
+
 add_library(
     qiven-foundation-header-check
     OBJECT
         headers/architecture.cpp
         headers/compiler.cpp
         headers/config.cpp
+        headers/contracts.cpp
         headers/platform.cpp
         headers/types.cpp
 )
