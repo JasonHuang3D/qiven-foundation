@@ -51,6 +51,21 @@ set_target_properties(
 
 add_test(NAME qiven-foundation.alignment COMMAND qiven-foundation-alignment)
 
+add_executable(qiven-foundation-allocator allocator.cpp)
+
+target_link_libraries(qiven-foundation-allocator PRIVATE qiven::foundation)
+qiven_enable_test_warnings(qiven-foundation-allocator)
+
+set_target_properties(
+    qiven-foundation-allocator
+    PROPERTIES
+        CXX_EXTENSIONS OFF
+        FOLDER "Tests"
+        VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+)
+
+add_test(NAME qiven-foundation.allocator COMMAND qiven-foundation-allocator)
+
 add_executable(qiven-foundation-contracts contracts.cpp)
 
 target_link_libraries(qiven-foundation-contracts PRIVATE qiven::foundation)
@@ -70,6 +85,7 @@ add_library(
     qiven-foundation-header-check
     OBJECT
         headers/alignment.cpp
+        headers/allocator.cpp
         headers/architecture.cpp
         headers/compiler.cpp
         headers/config.cpp

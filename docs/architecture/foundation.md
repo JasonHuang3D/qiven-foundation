@@ -118,7 +118,19 @@ Ownership must be visible.
 Primitive APIs should avoid hidden dynamic allocation where the caller cannot reason about its cost or lifetime. Components
 that own dynamic storage should expose enough semantics for allocation strategy and lifetime to be understood.
 
-A Qiven allocator model will be designed as a first-class subsystem rather than retrofitted after containers exist.
+The allocator boundary is `qiven::memory::AllocatorRef`, a non-owning type-erased reference to an allocator backend. The
+backend object must outlive every `AllocatorRef` that refers to it. The reference itself owns no memory and performs no
+allocation while dispatching.
+
+Raw allocation requests always carry both size and alignment. Alignment is a non-zero power of two. Allocation failure is
+reported by returning `nullptr`; exceptions and process-global out-of-memory handlers are not part of the primitive contract.
+A zero-size allocation is canonicalized to `nullptr` without calling the backend.
+
+Deallocation of `nullptr` is a no-op. A non-null pointer must be returned to the same allocator backend with the same size
+and alignment used for the successful allocation request.
+
+Foundation does not provide a mutable process-global default allocator. Concrete allocators define their own ownership,
+lifetime, and thread-safety semantics.
 
 ## 9. RTTI and runtime type machinery
 

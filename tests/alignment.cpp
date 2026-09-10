@@ -16,9 +16,9 @@ static_assert(qiven::align_up(17, 16) == 32);
 
 int main()
 {
-    constexpr usize alignment = 8;
-    constexpr usize max_value = std::numeric_limits<usize>::max();
-    constexpr usize max_aligned_value = max_value & ~usize {alignment - 1};
+    constexpr usize alignment         = 8;
+    constexpr usize max_value         = std::numeric_limits<usize>::max();
+    constexpr usize max_aligned_value = max_value & ~usize { alignment - 1 };
 
     if (!qiven::is_aligned(64, alignment))
         return 1;
