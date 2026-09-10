@@ -22,6 +22,9 @@ Visual Studio is a first-class development environment for Qiven Foundation. The
 Windows development uses the pinned tools from `qiven-toolchain-win`. By default, the toolchain repository is expected next
 to `qiven-foundation`. Set `QIVEN_TOOLCHAIN_ROOT` when using a different workspace layout.
 
+The Windows host still needs Git and Visual Studio 2022 with the C++ desktop development workload. CMake and clang-format
+come from `qiven-toolchain-win` rather than the host `PATH`.
+
 Generate the Visual Studio solution with:
 
 ```text

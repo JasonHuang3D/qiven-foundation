@@ -34,6 +34,7 @@ target_include_directories(
 
 set(
     QIVEN_FOUNDATION_PUBLIC_HEADERS
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/qiven/alignment.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/qiven/architecture.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/qiven/compiler.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/qiven/config.hpp
