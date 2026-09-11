@@ -37,6 +37,7 @@ set(
     ${CMAKE_CURRENT_SOURCE_DIR}/include/qiven/alignment.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/qiven/architecture.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/qiven/checked_arithmetic.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/qiven/checked_span.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/qiven/compiler.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/qiven/config.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/qiven/contracts.hpp

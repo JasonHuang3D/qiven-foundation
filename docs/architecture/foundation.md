@@ -168,6 +168,11 @@ including integer widths, byte order where relevant, compatibility, and versioni
 A Foundation source-level C++ API is not automatically a module ABI, IPC representation, wire format, or persistent format.
 Those boundaries are designed explicitly rather than inferred from object layout.
 
+Foundation uses `std::span` for non-owning contiguous bounded views rather than duplicating that abstraction. Offsets and
+counts derived from external or otherwise untrusted data must be validated before calling APIs whose range validity is a
+precondition. After validation, bounded views should be preferred over raw pointer-and-length pairs where they express the
+required semantics.
+
 ## 11. ABI policy
 
 Before 1.0, Qiven Foundation does not promise a stable C++ binary ABI.

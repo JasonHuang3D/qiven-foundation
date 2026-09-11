@@ -111,6 +111,21 @@ set_target_properties(
 
 add_test(NAME qiven-foundation.checked-arithmetic COMMAND qiven-foundation-checked-arithmetic)
 
+add_executable(qiven-foundation-checked-span checked_span.cpp)
+
+target_link_libraries(qiven-foundation-checked-span PRIVATE qiven::foundation)
+qiven_enable_test_warnings(qiven-foundation-checked-span)
+
+set_target_properties(
+    qiven-foundation-checked-span
+    PROPERTIES
+        CXX_EXTENSIONS OFF
+        FOLDER "Tests"
+        VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+)
+
+add_test(NAME qiven-foundation.checked-span COMMAND qiven-foundation-checked-span)
+
 add_executable(qiven-foundation-contracts contracts.cpp)
 
 target_link_libraries(qiven-foundation-contracts PRIVATE qiven::foundation)
@@ -133,6 +148,7 @@ add_library(
         headers/allocator.cpp
         headers/architecture.cpp
         headers/checked_arithmetic.cpp
+        headers/checked_span.cpp
         headers/compiler.cpp
         headers/config.cpp
         headers/contracts.cpp
