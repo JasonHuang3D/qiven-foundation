@@ -111,6 +111,21 @@ set_target_properties(
 
 add_test(NAME qiven-foundation.checked-arithmetic COMMAND qiven-foundation-checked-arithmetic)
 
+add_executable(qiven-foundation-checked-integer-cast checked_integer_cast.cpp)
+
+target_link_libraries(qiven-foundation-checked-integer-cast PRIVATE qiven::foundation)
+qiven_enable_test_warnings(qiven-foundation-checked-integer-cast)
+
+set_target_properties(
+    qiven-foundation-checked-integer-cast
+    PROPERTIES
+        CXX_EXTENSIONS OFF
+        FOLDER "Tests"
+        VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+)
+
+add_test(NAME qiven-foundation.checked-integer-cast COMMAND qiven-foundation-checked-integer-cast)
+
 add_executable(qiven-foundation-checked-span checked_span.cpp)
 
 target_link_libraries(qiven-foundation-checked-span PRIVATE qiven::foundation)
@@ -179,6 +194,7 @@ add_library(
         headers/architecture.cpp
         headers/byte_cursor.cpp
         headers/checked_arithmetic.cpp
+        headers/checked_integer_cast.cpp
         headers/checked_span.cpp
         headers/compiler.cpp
         headers/config.cpp

@@ -115,6 +115,10 @@ Arithmetic that derives byte counts, capacities, offsets, or externally controll
 overflow would change allocation or bounds semantics. Checked arithmetic reports overflow or underflow explicitly. Saturating
 or intentionally wrapping arithmetic, if introduced, must use distinct APIs because those are different contracts.
 
+Integer conversions must not silently change allocation or bounds semantics when the source value may be unrepresentable in
+the destination type. `checked_integer_cast` reports representability failure. An unchecked integer cast requires either a
+prior proof that the value is representable or an explicit contract that the conversion is intentionally lossy.
+
 ## 8. Memory and ownership
 
 Ownership must be visible.
