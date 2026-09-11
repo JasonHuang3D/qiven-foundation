@@ -66,6 +66,21 @@ set_target_properties(
 
 add_test(NAME qiven-foundation.allocator COMMAND qiven-foundation-allocator)
 
+add_executable(qiven-foundation-system-allocator system_allocator.cpp)
+
+target_link_libraries(qiven-foundation-system-allocator PRIVATE qiven::foundation)
+qiven_enable_test_warnings(qiven-foundation-system-allocator)
+
+set_target_properties(
+    qiven-foundation-system-allocator
+    PROPERTIES
+        CXX_EXTENSIONS OFF
+        FOLDER "Tests"
+        VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+)
+
+add_test(NAME qiven-foundation.system-allocator COMMAND qiven-foundation-system-allocator)
+
 add_executable(qiven-foundation-contracts contracts.cpp)
 
 target_link_libraries(qiven-foundation-contracts PRIVATE qiven::foundation)
@@ -91,6 +106,7 @@ add_library(
         headers/config.cpp
         headers/contracts.cpp
         headers/platform.cpp
+        headers/system_allocator.cpp
         headers/types.cpp
 )
 

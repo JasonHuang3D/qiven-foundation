@@ -27,8 +27,8 @@ public:
     template <detail::allocator_backend Allocator>
         requires(!std::same_as<Allocator, AllocatorRef>)
     explicit AllocatorRef(Allocator& allocator) noexcept
-        : context_(std::addressof(allocator))
-        , vtable_(std::addressof(vtable_for<Allocator>))
+    :
+    context_(std::addressof(allocator)), vtable_(std::addressof(vtable_for<Allocator>))
     {
     }
 
@@ -62,8 +62,17 @@ public:
 private:
     struct VTable
     {
-        void* (*try_allocate)(void* context, usize size, usize alignment) noexcept;
-        void (*deallocate)(void* context, void* memory, usize size, usize alignment) noexcept;
+        using TryAllocateFn = void* (*)(void* context, usize size, usize alignment) noexcept;
+        using DeallocateFn  = void (*)(void* context, void* memory, usize size, usize alignment) noexcept;
+
+        constexpr VTable(TryAllocateFn try_allocate_fn, DeallocateFn deallocate_fn) noexcept
+        :
+        try_allocate(try_allocate_fn), deallocate(deallocate_fn)
+        {
+        }
+
+        TryAllocateFn try_allocate;
+        DeallocateFn deallocate;
     };
 
     template <typename Allocator>

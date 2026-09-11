@@ -132,6 +132,9 @@ and alignment used for the successful allocation request.
 Foundation does not provide a mutable process-global default allocator. Concrete allocators define their own ownership,
 lifetime, and thread-safety semantics.
 
+`qiven::memory::SystemAllocator` is one hosted-platform backend for this protocol, not the foundation of the allocator model.
+Non-hosted environments such as bare-metal or RTOS targets may provide allocator backends without a system allocator.
+
 ## 9. RTTI and runtime type machinery
 
 Foundation APIs must not require RTTI for their core semantics.
@@ -139,14 +142,29 @@ Foundation APIs must not require RTTI for their core semantics.
 Type erasure or runtime type identification, when genuinely needed, should be explicit and local rather than an ambient
 dependency of the entire library.
 
-## 10. ABI policy
+## 10. Representation and boundary law
+
+An in-memory C++ representation is local unless an explicit boundary contract says otherwise. Raw pointers, function
+pointers, and process addresses are process-local capabilities and are not transferable identities.
+
+Inline, template, or static object identity must not be used as cross-module identity. C++ objects that carry callbacks or
+module-owned addresses, including `AllocatorRef`, must not outlive the code and state they reference.
+
+Cross-process communication requires an explicit transferable representation. Shared-memory structures must not depend on
+absolute process-local pointers when mappings may differ. Network and persistent formats must define their own representation,
+including integer widths, byte order where relevant, compatibility, and versioning.
+
+A Foundation source-level C++ API is not automatically a module ABI, IPC representation, wire format, or persistent format.
+Those boundaries are designed explicitly rather than inferred from object layout.
+
+## 11. ABI policy
 
 Before 1.0, Qiven Foundation does not promise a stable C++ binary ABI.
 
 The priority is a clean source-level architecture. Binary compatibility boundaries should be introduced intentionally where
 a real distribution or plugin requirement exists.
 
-## 11. Platform policy
+## 12. Platform policy
 
 The intended desktop/server platforms are:
 
@@ -160,7 +178,7 @@ when it is continuously built and tested.
 Platform-specific code should be isolated so that portable code does not accumulate preprocessor branches for unrelated
 operating systems.
 
-## 12. Testing law
+## 13. Testing law
 
 Every public component requires tests for its contract, including boundary and failure cases.
 
@@ -169,7 +187,7 @@ A bug fix should normally add a regression test.
 Tests may use more expensive diagnostics than production code. Sanitizers, static analysis, and platform-specific validation
 belong in the engineering pipeline even when they are not runtime dependencies.
 
-## 13. Development environment
+## 14. Development environment
 
 CMake is the build-system source of truth. IDE-specific generated project files are outputs, not hand-maintained project
 configuration.
@@ -180,7 +198,7 @@ in `CMakePresets.json`; convenience scripts should delegate to those presets ins
 
 IDE convenience must not compromise command-line, CI, or non-Windows builds.
 
-## 14. Change rule
+## 15. Change rule
 
 Convenience is not sufficient justification for adding a primitive to Foundation.
 

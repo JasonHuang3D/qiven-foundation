@@ -31,9 +31,9 @@ struct TestAllocator
     void deallocate(void* memory, usize size, usize alignment) noexcept
     {
         ++deallocation_calls;
-        deallocated_memory      = memory;
-        deallocation_size       = size;
-        deallocation_alignment  = alignment;
+        deallocated_memory     = memory;
+        deallocation_size      = size;
+        deallocation_alignment = alignment;
     }
 };
 
@@ -61,7 +61,7 @@ static_assert(!std::is_constructible_v<AllocatorRef, ThrowingAllocator&>);
 int main()
 {
     TestAllocator allocator;
-    AllocatorRef ref {allocator};
+    AllocatorRef ref { allocator };
 
     if (ref.try_allocate(0, 16) != nullptr)
         return 1;
