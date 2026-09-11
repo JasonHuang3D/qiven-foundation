@@ -36,6 +36,7 @@ set(
     QIVEN_FOUNDATION_PUBLIC_HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/include/qiven/alignment.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/qiven/architecture.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/qiven/byte_cursor.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/qiven/checked_arithmetic.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/qiven/checked_span.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/qiven/compiler.hpp

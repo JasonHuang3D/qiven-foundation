@@ -14,20 +14,20 @@ using qiven::usize;
 
 constexpr bool verify_constexpr() noexcept
 {
-    std::array<int, 4> values {10, 20, 30, 40};
+    std::array<int, 4> values { 10, 20, 30, 40 };
 
-    const auto middle = qiven::checked_subspan(std::span<int, 4> {values}, 1, 2);
+    const auto middle = qiven::checked_subspan(std::span<int, 4> { values }, 1, 2);
     if (!middle || middle->size() != 2 || (*middle)[0] != 20 || (*middle)[1] != 30)
         return false;
 
-    const auto end = qiven::checked_subspan(std::span<int, 4> {values}, 4, 0);
+    const auto end = qiven::checked_subspan(std::span<int, 4> { values }, 4, 0);
     if (!end || !end->empty())
         return false;
 
-    if (qiven::checked_subspan(std::span<int, 4> {values}, 5, 0))
+    if (qiven::checked_subspan(std::span<int, 4> { values }, 5, 0))
         return false;
 
-    if (qiven::checked_subspan(std::span<int, 4> {values}, 3, 2))
+    if (qiven::checked_subspan(std::span<int, 4> { values }, 3, 2))
         return false;
 
     return true;
@@ -44,8 +44,8 @@ static_assert(std::same_as<ConstResult, std::optional<std::span<const int>>>);
 
 int main()
 {
-    std::array<int, 5> values {1, 2, 3, 4, 5};
-    std::span<int> dynamic {values};
+    std::array<int, 5> values { 1, 2, 3, 4, 5 };
+    std::span<int> dynamic { values };
 
     auto middle = qiven::checked_subspan(dynamic, 1, 3);
     if (!middle || middle->data() != values.data() + 1 || middle->size() != 3)
@@ -55,7 +55,7 @@ int main()
     if (values[2] != 30)
         return 2;
 
-    const std::span<const int> read_only {values};
+    const std::span<const int> read_only { values };
 
     const auto tail = qiven::checked_subspan(read_only, 3, 2);
     if (!tail || tail->data() != values.data() + 3 || tail->size() != 2)

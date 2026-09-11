@@ -62,8 +62,8 @@ communicates their real semantic domain.
 Examples:
 
 ```cpp
-qiven::Span<T>
-qiven::memory::Arena
+qiven::ByteCursor
+qiven::memory::LinearArena
 qiven::sync::Mutex
 ```
 
@@ -172,6 +172,10 @@ Foundation uses `std::span` for non-owning contiguous bounded views rather than 
 counts derived from external or otherwise untrusted data must be validated before calling APIs whose range validity is a
 precondition. After validation, bounded views should be preferred over raw pointer-and-length pairs where they express the
 required semantics.
+
+`qiven::ByteCursor` provides non-owning sequential consumption of immutable bytes. The source storage must outlive the cursor.
+A failed consumption attempt does not advance the cursor, and copying a cursor creates an independent cursor position over the
+same storage. ByteCursor does not interpret integer encoding, endianness, object layout, or protocol semantics.
 
 ## 11. ABI policy
 
