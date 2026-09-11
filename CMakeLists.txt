@@ -40,6 +40,7 @@ set(
     ${CMAKE_CURRENT_SOURCE_DIR}/include/qiven/config.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/qiven/contracts.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/qiven/memory/allocator.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/qiven/memory/linear_arena.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/qiven/memory/system_allocator.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/qiven/platform.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/qiven/types.hpp
@@ -48,6 +49,7 @@ set(
 set(
     QIVEN_FOUNDATION_PRIVATE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/src/contracts.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/memory/linear_arena.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/memory/system_allocator.cpp
 )
 

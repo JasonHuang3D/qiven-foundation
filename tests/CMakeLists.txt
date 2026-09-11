@@ -66,6 +66,21 @@ set_target_properties(
 
 add_test(NAME qiven-foundation.allocator COMMAND qiven-foundation-allocator)
 
+add_executable(qiven-foundation-linear-arena linear_arena.cpp)
+
+target_link_libraries(qiven-foundation-linear-arena PRIVATE qiven::foundation)
+qiven_enable_test_warnings(qiven-foundation-linear-arena)
+
+set_target_properties(
+    qiven-foundation-linear-arena
+    PROPERTIES
+        CXX_EXTENSIONS OFF
+        FOLDER "Tests"
+        VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+)
+
+add_test(NAME qiven-foundation.linear-arena COMMAND qiven-foundation-linear-arena)
+
 add_executable(qiven-foundation-system-allocator system_allocator.cpp)
 
 target_link_libraries(qiven-foundation-system-allocator PRIVATE qiven::foundation)
@@ -105,6 +120,7 @@ add_library(
         headers/compiler.cpp
         headers/config.cpp
         headers/contracts.cpp
+        headers/linear_arena.cpp
         headers/platform.cpp
         headers/system_allocator.cpp
         headers/types.cpp

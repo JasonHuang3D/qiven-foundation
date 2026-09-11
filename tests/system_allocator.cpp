@@ -37,11 +37,11 @@ int main()
     allocator.deallocate(nullptr, 0, 1);
 
     constexpr AllocationCase cases[] {
-        {1, 1},
-        {3, 2},
-        {17, alignof(void*)},
-        {37, 64},
-        {257, 256},
+        { 1, 1 },
+        { 3, 2 },
+        { 17, alignof(void*) },
+        { 37, 64 },
+        { 257, 256 },
     };
 
     for (const AllocationCase allocation : cases)
@@ -53,14 +53,14 @@ int main()
         if (!pointer_is_aligned(memory, allocation.alignment))
             return 3;
 
-        auto* const bytes = static_cast<std::byte*>(memory);
-        bytes[0] = std::byte {0x5a};
-        bytes[allocation.size - 1] = std::byte {0xa5};
+        auto* const bytes          = static_cast<std::byte*>(memory);
+        bytes[0]                   = std::byte { 0x5a };
+        bytes[allocation.size - 1] = std::byte { 0xa5 };
 
         allocator.deallocate(memory, allocation.size, allocation.alignment);
     }
 
-    AllocatorRef ref {allocator};
+    AllocatorRef ref { allocator };
 
     void* const memory = ref.try_allocate(73, 128);
     if (memory == nullptr)

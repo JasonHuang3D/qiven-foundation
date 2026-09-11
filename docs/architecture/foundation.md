@@ -135,6 +135,13 @@ lifetime, and thread-safety semantics.
 `qiven::memory::SystemAllocator` is one hosted-platform backend for this protocol, not the foundation of the allocator model.
 Non-hosted environments such as bare-metal or RTOS targets may provide allocator backends without a system allocator.
 
+`qiven::memory::LinearArena` is a non-owning fixed-capacity bump allocator over caller-provided storage. Individual
+`deallocate` calls do not reclaim space; `reset` performs bulk reclamation. Resetting an arena does not run object destructors,
+so object lifetime remains the caller's responsibility. The arena is not thread-safe.
+
+The allocator protocol does not require immediate or individual reclamation. A backend may defer reclamation or make
+`deallocate` a no-op when its lifetime model is explicit.
+
 ## 9. RTTI and runtime type machinery
 
 Foundation APIs must not require RTTI for their core semantics.
