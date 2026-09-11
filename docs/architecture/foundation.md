@@ -197,7 +197,13 @@ The intended desktop/server platforms are:
 - macOS.
 
 x86-64 is the initial architecture baseline. ARM64 is a first-class target direction, but support becomes a contract only
-when it is continuously built and tested.
+when it is continuously built and tested. macOS ARM64 is continuously built and tested; other ARM64 platform combinations
+become support contracts only when CI covers them.
+
+Continuous integration verifies Windows Server 2022 x64 with MSVC/Visual Studio 2022, Ubuntu 24.04 x64 with GCC and Clang,
+and macOS 15 on both x64 and ARM64 with AppleClang. Normal matrix entries configure, build, and test both Debug and Release.
+A separate Ubuntu/Clang contract build disables exceptions and RTTI and executes the tests under AddressSanitizer and
+UndefinedBehaviorSanitizer. Hosted-runner compiler versions validate current toolchains and are not minimum-version promises.
 
 Platform-specific code should be isolated so that portable code does not accumulate preprocessor branches for unrelated
 operating systems.

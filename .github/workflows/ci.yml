@@ -1,0 +1,145 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - "**"
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  windows:
+    name: Windows MSVC x64 / ${{ matrix.build_type }}
+    runs-on: windows-2022
+    timeout-minutes: 15
+
+    strategy:
+      fail-fast: false
+      matrix:
+        build_type:
+          - Debug
+          - Release
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Toolchain
+        run: cmake --version
+
+      - name: Configure
+        run: >
+          cmake -S . -B build
+          -G "Visual Studio 17 2022"
+          -A x64
+          -DQIVEN_BUILD_TESTS=ON
+
+      - name: Build
+        run: cmake --build build --config ${{ matrix.build_type }} --parallel
+
+      - name: Test
+        run: ctest --test-dir build -C ${{ matrix.build_type }} --output-on-failure
+
+  unix:
+    name: ${{ matrix.name }} / ${{ matrix.build_type }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+
+    strategy:
+      fail-fast: false
+      matrix:
+        build_type:
+          - Debug
+          - Release
+        target:
+          - linux-gcc
+          - linux-clang
+          - macos-x64
+          - macos-arm64
+        include:
+          - target: linux-gcc
+            name: Linux GCC x64
+            os: ubuntu-24.04
+            cc: gcc
+            cxx: g++
+          - target: linux-clang
+            name: Linux Clang x64
+            os: ubuntu-24.04
+            cc: clang
+            cxx: clang++
+          - target: macos-x64
+            name: macOS AppleClang x64
+            os: macos-15-intel
+            cc: clang
+            cxx: clang++
+          - target: macos-arm64
+            name: macOS AppleClang arm64
+            os: macos-15
+            cc: clang
+            cxx: clang++
+
+    env:
+      CC: ${{ matrix.cc }}
+      CXX: ${{ matrix.cxx }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Toolchain
+        run: |
+          cmake --version
+          "$CXX" --version
+
+      - name: Configure
+        run: >
+          cmake -S . -B build
+          -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+          -DQIVEN_BUILD_TESTS=ON
+
+      - name: Build
+        run: cmake --build build --parallel
+
+      - name: Test
+        run: ctest --test-dir build --output-on-failure
+
+  contracts:
+    name: Linux Clang / no exceptions / no RTTI / ASan+UBSan
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+
+    env:
+      CC: clang
+      CXX: clang++
+      CXXFLAGS: -fno-exceptions -fno-rtti -fsanitize=address,undefined -fno-omit-frame-pointer
+      LDFLAGS: -fsanitize=address,undefined
+      ASAN_OPTIONS: detect_leaks=1:halt_on_error=1
+      UBSAN_OPTIONS: halt_on_error=1:print_stacktrace=1
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Toolchain
+        run: |
+          cmake --version
+          "$CXX" --version
+
+      - name: Configure
+        run: >
+          cmake -S . -B build
+          -DCMAKE_BUILD_TYPE=Debug
+          -DQIVEN_BUILD_TESTS=ON
+
+      - name: Build
+        run: cmake --build build --parallel
+
+      - name: Test
+        run: ctest --test-dir build --output-on-failure
