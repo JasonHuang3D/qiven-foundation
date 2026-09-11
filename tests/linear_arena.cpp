@@ -26,7 +26,7 @@ static_assert(!std::is_move_assignable_v<LinearArena>);
 
 int main()
 {
-    LinearArena empty {nullptr, 0};
+    LinearArena empty { nullptr, 0 };
 
     if (empty.capacity() != 0 || empty.used() != 0 || empty.remaining() != 0)
         return 1;
@@ -35,7 +35,7 @@ int main()
         return 2;
 
     alignas(64) std::byte storage[256] {};
-    LinearArena arena {storage + 1, sizeof(storage) - 1};
+    LinearArena arena { storage + 1, sizeof(storage) - 1 };
 
     if (arena.capacity() != sizeof(storage) - 1 || arena.used() != 0 || arena.remaining() != sizeof(storage) - 1)
         return 3;
@@ -78,7 +78,7 @@ int main()
         return 13;
 
     alignas(16) std::byte small_storage[32] {};
-    LinearArena small {small_storage, sizeof(small_storage)};
+    LinearArena small { small_storage, sizeof(small_storage) };
 
     void* const large = small.try_allocate(24, 16);
     if (large == nullptr)
@@ -92,8 +92,8 @@ int main()
         return 16;
 
     alignas(128) std::byte erased_storage[256] {};
-    LinearArena erased_arena {erased_storage, sizeof(erased_storage)};
-    AllocatorRef allocator {erased_arena};
+    LinearArena erased_arena { erased_storage, sizeof(erased_storage) };
+    AllocatorRef allocator { erased_arena };
 
     void* const erased = allocator.try_allocate(73, 128);
     if (erased == nullptr || !pointer_is_aligned(erased, 128))

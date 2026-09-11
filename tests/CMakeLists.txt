@@ -96,6 +96,21 @@ set_target_properties(
 
 add_test(NAME qiven-foundation.system-allocator COMMAND qiven-foundation-system-allocator)
 
+add_executable(qiven-foundation-checked-arithmetic checked_arithmetic.cpp)
+
+target_link_libraries(qiven-foundation-checked-arithmetic PRIVATE qiven::foundation)
+qiven_enable_test_warnings(qiven-foundation-checked-arithmetic)
+
+set_target_properties(
+    qiven-foundation-checked-arithmetic
+    PROPERTIES
+        CXX_EXTENSIONS OFF
+        FOLDER "Tests"
+        VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+)
+
+add_test(NAME qiven-foundation.checked-arithmetic COMMAND qiven-foundation-checked-arithmetic)
+
 add_executable(qiven-foundation-contracts contracts.cpp)
 
 target_link_libraries(qiven-foundation-contracts PRIVATE qiven::foundation)
@@ -117,6 +132,7 @@ add_library(
         headers/alignment.cpp
         headers/allocator.cpp
         headers/architecture.cpp
+        headers/checked_arithmetic.cpp
         headers/compiler.cpp
         headers/config.cpp
         headers/contracts.cpp

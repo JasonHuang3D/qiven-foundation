@@ -9,10 +9,8 @@
 namespace qiven::memory
 {
 LinearArena::LinearArena(void* memory, usize capacity) noexcept
-    : begin_(static_cast<std::byte*>(memory))
-    , current_(static_cast<std::byte*>(memory))
-    , capacity_(capacity)
-    , remaining_(capacity)
+:
+begin_(static_cast<std::byte*>(memory)), current_(static_cast<std::byte*>(memory)), capacity_(capacity), remaining_(capacity)
 {
     QIVEN_ASSERT(memory != nullptr || capacity == 0);
 }

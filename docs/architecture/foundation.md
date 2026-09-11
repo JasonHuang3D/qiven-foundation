@@ -111,6 +111,10 @@ no-exception consumers.
 
 A concrete result/status abstraction will be designed before APIs need one rather than invented ad hoc by each module.
 
+Arithmetic that derives byte counts, capacities, offsets, or externally controlled lengths must not silently wrap when
+overflow would change allocation or bounds semantics. Checked arithmetic reports overflow or underflow explicitly. Saturating
+or intentionally wrapping arithmetic, if introduced, must use distinct APIs because those are different contracts.
+
 ## 8. Memory and ownership
 
 Ownership must be visible.
