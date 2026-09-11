@@ -15,23 +15,23 @@ using qiven::usize;
 constexpr bool verify_constexpr() noexcept
 {
     constexpr std::array<std::byte, 4> bytes {
-        std::byte {0x10},
-        std::byte {0x20},
-        std::byte {0x30},
-        std::byte {0x40},
+        std::byte { 0x10 },
+        std::byte { 0x20 },
+        std::byte { 0x30 },
+        std::byte { 0x40 },
     };
 
-    ByteCursor cursor {std::span<const std::byte> {bytes}};
+    ByteCursor cursor { std::span<const std::byte> { bytes } };
 
     const auto first = cursor.take(2);
-    if (!first || first->size() != 2 || (*first)[0] != std::byte {0x10} || (*first)[1] != std::byte {0x20})
+    if (!first || first->size() != 2 || (*first)[0] != std::byte { 0x10 } || (*first)[1] != std::byte { 0x20 })
         return false;
 
     if (cursor.remaining() != 2 || cursor.empty())
         return false;
 
     const auto second = cursor.take(2);
-    if (!second || second->size() != 2 || (*second)[0] != std::byte {0x30} || (*second)[1] != std::byte {0x40})
+    if (!second || second->size() != 2 || (*second)[0] != std::byte { 0x30 } || (*second)[1] != std::byte { 0x40 })
         return false;
 
     if (!cursor.empty() || cursor.remaining() != 0)
@@ -52,15 +52,15 @@ static_assert(std::is_copy_assignable_v<ByteCursor>);
 int main()
 {
     const std::array<std::byte, 6> bytes {
-        std::byte {0x01},
-        std::byte {0x02},
-        std::byte {0x03},
-        std::byte {0x04},
-        std::byte {0x05},
-        std::byte {0x06},
+        std::byte { 0x01 },
+        std::byte { 0x02 },
+        std::byte { 0x03 },
+        std::byte { 0x04 },
+        std::byte { 0x05 },
+        std::byte { 0x06 },
     };
 
-    ByteCursor cursor {std::span<const std::byte> {bytes}};
+    ByteCursor cursor { std::span<const std::byte> { bytes } };
 
     if (cursor.remaining_bytes().data() != bytes.data() || cursor.remaining() != bytes.size() || cursor.empty())
         return 1;
@@ -110,7 +110,7 @@ int main()
     if (cursor.take(1))
         return 12;
 
-    ByteCursor empty {std::span<const std::byte> {}};
+    ByteCursor empty { std::span<const std::byte> {} };
 
     if (!empty.empty() || empty.remaining() != 0)
         return 13;

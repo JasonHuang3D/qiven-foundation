@@ -141,6 +141,21 @@ set_target_properties(
 
 add_test(NAME qiven-foundation.byte-cursor COMMAND qiven-foundation-byte-cursor)
 
+add_executable(qiven-foundation-endian endian.cpp)
+
+target_link_libraries(qiven-foundation-endian PRIVATE qiven::foundation)
+qiven_enable_test_warnings(qiven-foundation-endian)
+
+set_target_properties(
+    qiven-foundation-endian
+    PROPERTIES
+        CXX_EXTENSIONS OFF
+        FOLDER "Tests"
+        VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+)
+
+add_test(NAME qiven-foundation.endian COMMAND qiven-foundation-endian)
+
 add_executable(qiven-foundation-contracts contracts.cpp)
 
 target_link_libraries(qiven-foundation-contracts PRIVATE qiven::foundation)
@@ -168,6 +183,7 @@ add_library(
         headers/compiler.cpp
         headers/config.cpp
         headers/contracts.cpp
+        headers/endian.cpp
         headers/linear_arena.cpp
         headers/platform.cpp
         headers/system_allocator.cpp

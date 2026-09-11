@@ -12,7 +12,8 @@ class ByteCursor
 {
 public:
     explicit constexpr ByteCursor(std::span<const std::byte> bytes) noexcept
-        : remaining_(bytes)
+    :
+    remaining_(bytes)
     {
     }
 
@@ -22,7 +23,7 @@ public:
             return std::nullopt;
 
         const std::span<const std::byte> result = remaining_.first(count);
-        remaining_                             = remaining_.subspan(count);
+        remaining_                              = remaining_.subspan(count);
         return result;
     }
 

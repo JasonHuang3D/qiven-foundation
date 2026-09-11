@@ -165,6 +165,10 @@ Cross-process communication requires an explicit transferable representation. Sh
 absolute process-local pointers when mappings may differ. Network and persistent formats must define their own representation,
 including integer widths, byte order where relevant, compatibility, and versioning.
 
+Transferable integer fields use explicit widths and explicit byte order where the format requires it. Platform-sized types
+such as `usize` and `isize`, raw pointers, and native handles are not portable wire or persistent representations. Endian
+decoding constructs fixed-width integer values from bytes without treating the byte storage as a native C++ object.
+
 A Foundation source-level C++ API is not automatically a module ABI, IPC representation, wire format, or persistent format.
 Those boundaries are designed explicitly rather than inferred from object layout.
 
