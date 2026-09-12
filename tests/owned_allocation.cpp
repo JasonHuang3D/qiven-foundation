@@ -20,7 +20,7 @@ public:
     [[nodiscard]] void* try_allocate(usize size, usize alignment) noexcept
     {
         ++allocate_count;
-        last_allocate_size = size;
+        last_allocate_size      = size;
         last_allocate_alignment = alignment;
 
         if (fail_allocation || size > storage.size() || alignment > storage_alignment)
@@ -33,22 +33,22 @@ public:
     void deallocate(void* memory, usize size, usize alignment) noexcept
     {
         ++deallocate_count;
-        last_deallocated = memory;
-        last_deallocate_size = size;
+        last_deallocated          = memory;
+        last_deallocate_size      = size;
         last_deallocate_alignment = alignment;
     }
 
     static constexpr usize storage_alignment = 64;
 
     alignas(storage_alignment) std::array<std::byte, 256> storage {};
-    bool fail_allocation = false;
-    usize allocate_count = 0;
-    usize deallocate_count = 0;
-    void* last_allocated = nullptr;
-    usize last_allocate_size = 0;
-    usize last_allocate_alignment = 0;
-    void* last_deallocated = nullptr;
-    usize last_deallocate_size = 0;
+    bool fail_allocation            = false;
+    usize allocate_count            = 0;
+    usize deallocate_count          = 0;
+    void* last_allocated            = nullptr;
+    usize last_allocate_size        = 0;
+    usize last_allocate_alignment   = 0;
+    void* last_deallocated          = nullptr;
+    usize last_deallocate_size      = 0;
     usize last_deallocate_alignment = 0;
 };
 
@@ -63,7 +63,7 @@ bool verify_success_and_destruction()
     void* allocated = nullptr;
 
     {
-        auto allocation = OwnedAllocation::try_allocate(AllocatorRef {backend}, 96, 32);
+        auto allocation = OwnedAllocation::try_allocate(AllocatorRef { backend }, 96, 32);
         if (!allocation)
             return false;
 
@@ -93,7 +93,7 @@ bool verify_failure()
     TrackingAllocator backend;
     backend.fail_allocation = true;
 
-    const auto allocation = OwnedAllocation::try_allocate(AllocatorRef {backend}, 64, 16);
+    const auto allocation = OwnedAllocation::try_allocate(AllocatorRef { backend }, 64, 16);
 
     return !allocation &&
            backend.allocate_count == 1 &&
@@ -105,7 +105,7 @@ bool verify_zero_size()
     TrackingAllocator backend;
 
     {
-        auto allocation = OwnedAllocation::try_allocate(AllocatorRef {backend}, 0, 64);
+        auto allocation = OwnedAllocation::try_allocate(AllocatorRef { backend }, 0, 64);
         if (!allocation)
             return false;
 
@@ -128,13 +128,13 @@ bool verify_move_construction()
     void* allocated = nullptr;
 
     {
-        auto source = OwnedAllocation::try_allocate(AllocatorRef {backend}, 48, 16);
+        auto source = OwnedAllocation::try_allocate(AllocatorRef { backend }, 48, 16);
         if (!source)
             return false;
 
         allocated = source->data();
 
-        OwnedAllocation destination {std::move(*source)};
+        OwnedAllocation destination { std::move(*source) };
 
         if (!source->empty() ||
             source->data() != nullptr ||
@@ -164,17 +164,17 @@ bool verify_move_assignment_origins()
     TrackingAllocator source_backend;
 
     void* destination_memory = nullptr;
-    void* source_memory = nullptr;
+    void* source_memory      = nullptr;
 
     {
-        auto destination = OwnedAllocation::try_allocate(AllocatorRef {destination_backend}, 32, 8);
-        auto source = OwnedAllocation::try_allocate(AllocatorRef {source_backend}, 80, 32);
+        auto destination = OwnedAllocation::try_allocate(AllocatorRef { destination_backend }, 32, 8);
+        auto source      = OwnedAllocation::try_allocate(AllocatorRef { source_backend }, 80, 32);
 
         if (!destination || !source)
             return false;
 
         destination_memory = destination->data();
-        source_memory = source->data();
+        source_memory      = source->data();
 
         *destination = std::move(*source);
 
@@ -212,11 +212,11 @@ bool verify_self_move()
     TrackingAllocator backend;
 
     {
-        auto allocation = OwnedAllocation::try_allocate(AllocatorRef {backend}, 40, 8);
+        auto allocation = OwnedAllocation::try_allocate(AllocatorRef { backend }, 40, 8);
         if (!allocation)
             return false;
 
-        void* const memory = allocation->data();
+        void* const memory           = allocation->data();
         OwnedAllocation* const owner = &*allocation;
 
         *owner = std::move(*owner);
