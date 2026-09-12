@@ -171,6 +171,21 @@ set_target_properties(
 
 add_test(NAME qiven-foundation.byte-cursor COMMAND qiven-foundation-byte-cursor)
 
+add_executable(qiven-foundation-byte-writer byte_writer.cpp)
+
+target_link_libraries(qiven-foundation-byte-writer PRIVATE qiven::foundation)
+qiven_enable_test_warnings(qiven-foundation-byte-writer)
+
+set_target_properties(
+    qiven-foundation-byte-writer
+    PROPERTIES
+        CXX_EXTENSIONS OFF
+        FOLDER "Tests"
+        VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+)
+
+add_test(NAME qiven-foundation.byte-writer COMMAND qiven-foundation-byte-writer)
+
 add_executable(qiven-foundation-endian endian.cpp)
 
 target_link_libraries(qiven-foundation-endian PRIVATE qiven::foundation)
@@ -208,6 +223,7 @@ add_library(
         headers/allocator.cpp
         headers/architecture.cpp
         headers/byte_cursor.cpp
+        headers/byte_writer.cpp
         headers/checked_arithmetic.cpp
         headers/checked_integer_cast.cpp
         headers/checked_span.cpp

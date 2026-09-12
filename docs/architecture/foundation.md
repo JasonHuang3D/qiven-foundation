@@ -190,6 +190,12 @@ required semantics.
 A failed consumption attempt does not advance the cursor, and copying a cursor creates an independent cursor position over the
 same storage. ByteCursor does not interpret integer encoding, endianness, object layout, or protocol semantics.
 
+qiven::ByteWriter reserves bounded mutable byte ranges sequentially without owning storage. The backing storage must
+outlive the writer and every returned span. Reservations advance only on success; over-capacity requests return
+std::nullopt without advancing, and zero-size reservations always succeed without advancing. Remaining bytes are the
+unwritten suffix. Copies share storage but advance independently. ByteWriter performs no allocation or synchronization,
+throws no exceptions, and does not encode typed values or interpret protocols.
+
 ## 11. ABI policy
 
 Before 1.0, Qiven Foundation does not promise a stable C++ binary ABI.
