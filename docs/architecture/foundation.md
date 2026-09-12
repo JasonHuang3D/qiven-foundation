@@ -176,7 +176,10 @@ including integer widths, byte order where relevant, compatibility, and versioni
 
 Transferable integer fields use explicit widths and explicit byte order where the format requires it. Platform-sized types
 such as `usize` and `isize`, raw pointers, and native handles are not portable wire or persistent representations. Endian
-decoding constructs fixed-width integer values from bytes without treating the byte storage as a native C++ object.
+decoding and encoding explicitly convert between fixed-width integer values and bytes without treating byte storage as a
+native C++ object. Unsigned 16-, 32-, and 64-bit encoding requires an exactly sized destination and returns false without
+modifying any bytes on size mismatch. Encoding is constexpr and non-throwing, performs no allocation or synchronization,
+and is independent of host byte order and destination alignment.
 
 A Foundation source-level C++ API is not automatically a module ABI, IPC representation, wire format, or persistent format.
 Those boundaries are designed explicitly rather than inferred from object layout.
