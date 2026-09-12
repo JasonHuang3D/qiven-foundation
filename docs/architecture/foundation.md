@@ -161,6 +161,10 @@ Allocation failure is represented separately from a successful zero-size allocat
 empty with layout `{0, 1}`. OwnedAllocation manages raw storage only; it does not construct or destroy C++ objects in that
 storage.
 
+`qiven::memory::OwnedObject<T>` owns exactly one live object in storage obtained through the Foundation allocator model.
+Construction and destruction must be non-throwing, and allocation failure is represented by `std::nullopt`. Moving ownership
+does not move the `T` object. Destruction of `T` occurs before its raw storage is deallocated.
+
 ## 9. RTTI and runtime type machinery
 
 Foundation APIs must not require RTTI for their core semantics.
