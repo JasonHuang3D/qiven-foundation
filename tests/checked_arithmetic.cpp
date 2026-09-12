@@ -65,6 +65,53 @@ static_assert(!qiven::checked_sub<i16>(i16_min, 1).has_value());
 static_assert(!qiven::checked_sub<i32>(i32_max, -1).has_value());
 static_assert(qiven::checked_sub<i64>(i64_min + 1, 1) == std::optional<i64> { i64_min });
 
+static_assert(qiven::checked_mul<i8>(0, 23) == std::optional<i8> { static_cast<i8>(0) });
+static_assert(qiven::checked_mul<i8>(0, -23) == std::optional<i8> { static_cast<i8>(0) });
+static_assert(qiven::checked_mul<i8>(0, i8_max) == std::optional<i8> { static_cast<i8>(0) });
+static_assert(qiven::checked_mul<i8>(0, i8_min) == std::optional<i8> { static_cast<i8>(0) });
+static_assert(qiven::checked_mul<i8>(i8_min, 0) == std::optional<i8> { static_cast<i8>(0) });
+static_assert(qiven::checked_mul<i8>(1, i8_max) == std::optional<i8> { i8_max });
+static_assert(qiven::checked_mul<i8>(1, i8_min) == std::optional<i8> { i8_min });
+static_assert(qiven::checked_mul<i8>(-1, 23) == std::optional<i8> { static_cast<i8>(-23) });
+static_assert(qiven::checked_mul<i8>(-1, -23) == std::optional<i8> { static_cast<i8>(23) });
+static_assert(!qiven::checked_mul<i8>(i8_min, -1).has_value());
+static_assert(!qiven::checked_mul<i8>(-1, i8_min).has_value());
+static_assert(!qiven::checked_mul<i8>(i8_max, 2).has_value());
+static_assert(!qiven::checked_mul<i8>(2, i8_max).has_value());
+static_assert(!qiven::checked_mul<i8>(i8_min, 2).has_value());
+static_assert(!qiven::checked_mul<i8>(2, i8_min).has_value());
+static_assert(qiven::checked_mul<i8>(6, 7) == std::optional<i8> { static_cast<i8>(42) });
+static_assert(qiven::checked_mul<i8>(6, -7) == std::optional<i8> { static_cast<i8>(-42) });
+static_assert(qiven::checked_mul<i8>(-6, 7) == std::optional<i8> { static_cast<i8>(-42) });
+static_assert(qiven::checked_mul<i8>(-6, -7) == std::optional<i8> { static_cast<i8>(42) });
+static_assert(qiven::checked_mul<i8>(63, 2) == std::optional<i8> { static_cast<i8>(126) });
+static_assert(qiven::checked_mul<i8>(-64, 2) == std::optional<i8> { i8_min });
+static_assert(qiven::checked_mul<i8>(2, -64) == std::optional<i8> { i8_min });
+static_assert(!qiven::checked_mul<i16>(i16_min, -1).has_value());
+static_assert(qiven::checked_mul<i16>(i16_max / 3, 3) == std::optional<i16> { static_cast<i16>(32766) });
+static_assert(!qiven::checked_mul<i32>(i32_max, 2).has_value());
+static_assert(qiven::checked_mul<i64>(i64_min, 1) == std::optional<i64> { i64_min });
+
+[[nodiscard]] bool verify_i8_mul_exhaustively() noexcept
+{
+    for (int lhs = i8_min; lhs <= i8_max; ++lhs)
+    {
+        for (int rhs = i8_min; rhs <= i8_max; ++rhs)
+        {
+            const auto mul       = qiven::checked_mul(static_cast<i8>(lhs), static_cast<i8>(rhs));
+            const int mul_value  = lhs * rhs;
+            const bool mul_valid = mul_value >= i8_min && mul_value <= i8_max;
+
+            if (mul.has_value() != mul_valid)
+                return false;
+            if (mul_valid && static_cast<int>(*mul) != mul_value)
+                return false;
+        }
+    }
+
+    return true;
+}
+
 [[nodiscard]] bool verify_i8_add_sub_exhaustively() noexcept
 {
     for (int lhs = i8_min; lhs <= i8_max; ++lhs)
@@ -142,6 +189,9 @@ static_assert(qiven::checked_sub<i64>(i64_min + 1, 1) == std::optional<i64> { i6
 
 int main()
 {
+    if (!verify_i8_mul_exhaustively())
+        return 1;
+
     if (!verify_i8_add_sub_exhaustively())
         return 1;
 
