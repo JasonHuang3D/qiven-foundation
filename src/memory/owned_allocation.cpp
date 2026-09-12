@@ -9,25 +9,29 @@ std::optional<OwnedAllocation> OwnedAllocation::try_allocate(
     usize size,
     usize alignment) noexcept
 {
-    void* const memory = allocator.try_allocate(size, alignment);
+    return try_allocate(allocator, Layout::from_size_alignment(size, alignment));
+}
 
-    if (size != 0 && memory == nullptr)
+std::optional<OwnedAllocation> OwnedAllocation::try_allocate(AllocatorRef allocator, Layout layout) noexcept
+{
+    void* const memory = allocator.try_allocate(layout);
+
+    if (layout.size() != 0 && memory == nullptr)
         return std::nullopt;
 
-    return OwnedAllocation { allocator, memory, size, alignment };
+    return OwnedAllocation { allocator, memory, layout };
 }
 
 OwnedAllocation::~OwnedAllocation() noexcept
 {
-    allocator_.deallocate(memory_, size_, alignment_);
+    allocator_.deallocate(memory_, layout_);
 }
 
 OwnedAllocation::OwnedAllocation(OwnedAllocation&& other) noexcept
 :
 allocator_(other.allocator_),
 memory_(std::exchange(other.memory_, nullptr)),
-size_(std::exchange(other.size_, 0)),
-alignment_(std::exchange(other.alignment_, 1))
+layout_(std::exchange(other.layout_, Layout::from_size_alignment(0, 1)))
 {
 }
 
@@ -36,12 +40,11 @@ OwnedAllocation& OwnedAllocation::operator=(OwnedAllocation&& other) noexcept
     if (this == &other)
         return *this;
 
-    allocator_.deallocate(memory_, size_, alignment_);
+    allocator_.deallocate(memory_, layout_);
 
     allocator_ = other.allocator_;
     memory_    = std::exchange(other.memory_, nullptr);
-    size_      = std::exchange(other.size_, 0);
-    alignment_ = std::exchange(other.alignment_, 1);
+    layout_    = std::exchange(other.layout_, Layout::from_size_alignment(0, 1));
 
     return *this;
 }
@@ -51,24 +54,29 @@ void* OwnedAllocation::data() const noexcept
     return memory_;
 }
 
+Layout OwnedAllocation::layout() const noexcept
+{
+    return layout_;
+}
+
 usize OwnedAllocation::size() const noexcept
 {
-    return size_;
+    return layout_.size();
 }
 
 usize OwnedAllocation::alignment() const noexcept
 {
-    return alignment_;
+    return layout_.alignment();
 }
 
 bool OwnedAllocation::empty() const noexcept
 {
-    return size_ == 0;
+    return layout_.size() == 0;
 }
 
-OwnedAllocation::OwnedAllocation(AllocatorRef allocator, void* memory, usize size, usize alignment) noexcept
+OwnedAllocation::OwnedAllocation(AllocatorRef allocator, void* memory, Layout layout) noexcept
 :
-allocator_(allocator), memory_(memory), size_(size), alignment_(alignment)
+allocator_(allocator), memory_(memory), layout_(layout)
 {
 }
 } // namespace qiven::memory
