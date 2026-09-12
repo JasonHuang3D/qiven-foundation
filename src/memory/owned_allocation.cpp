@@ -14,7 +14,7 @@ std::optional<OwnedAllocation> OwnedAllocation::try_allocate(
     if (size != 0 && memory == nullptr)
         return std::nullopt;
 
-    return OwnedAllocation {allocator, memory, size, alignment};
+    return OwnedAllocation { allocator, memory, size, alignment };
 }
 
 OwnedAllocation::~OwnedAllocation() noexcept
@@ -23,10 +23,11 @@ OwnedAllocation::~OwnedAllocation() noexcept
 }
 
 OwnedAllocation::OwnedAllocation(OwnedAllocation&& other) noexcept
-    : allocator_(other.allocator_),
-      memory_(std::exchange(other.memory_, nullptr)),
-      size_(std::exchange(other.size_, 0)),
-      alignment_(std::exchange(other.alignment_, 1))
+:
+allocator_(other.allocator_),
+memory_(std::exchange(other.memory_, nullptr)),
+size_(std::exchange(other.size_, 0)),
+alignment_(std::exchange(other.alignment_, 1))
 {
 }
 
@@ -38,8 +39,8 @@ OwnedAllocation& OwnedAllocation::operator=(OwnedAllocation&& other) noexcept
     allocator_.deallocate(memory_, size_, alignment_);
 
     allocator_ = other.allocator_;
-    memory_ = std::exchange(other.memory_, nullptr);
-    size_ = std::exchange(other.size_, 0);
+    memory_    = std::exchange(other.memory_, nullptr);
+    size_      = std::exchange(other.size_, 0);
     alignment_ = std::exchange(other.alignment_, 1);
 
     return *this;
@@ -66,7 +67,8 @@ bool OwnedAllocation::empty() const noexcept
 }
 
 OwnedAllocation::OwnedAllocation(AllocatorRef allocator, void* memory, usize size, usize alignment) noexcept
-    : allocator_(allocator), memory_(memory), size_(size), alignment_(alignment)
+:
+allocator_(allocator), memory_(memory), size_(size), alignment_(alignment)
 {
 }
 } // namespace qiven::memory
