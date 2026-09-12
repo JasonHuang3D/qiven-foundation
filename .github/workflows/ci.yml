@@ -1,10 +1,19 @@
 name: CI
 
+run-name: CI / ${{ inputs.jobs }}
+
 on:
-  push:
-    branches-ignore:
-      - main
   workflow_dispatch:
+    inputs:
+      jobs:
+        description: >-
+          Validation units: full, or comma-separated IDs:
+          win-debug, win-release, gcc-debug, gcc-release,
+          clang-debug, clang-release, mac-x64-debug, mac-x64-release,
+          mac-arm64-debug, mac-arm64-release, contracts
+        required: true
+        default: full
+        type: string
 
 permissions:
   contents: read
@@ -14,17 +23,172 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  plan:
+    name: Validation plan
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+
+    outputs:
+      windows: ${{ steps.plan.outputs.windows }}
+      unix: ${{ steps.plan.outputs.unix }}
+      run_windows: ${{ steps.plan.outputs.run_windows }}
+      run_unix: ${{ steps.plan.outputs.run_unix }}
+      run_contracts: ${{ steps.plan.outputs.run_contracts }}
+      selected: ${{ steps.plan.outputs.selected }}
+
+    steps:
+      - name: Resolve requested validation units
+        id: plan
+        shell: bash
+        env:
+          REQUESTED_JOBS: ${{ inputs.jobs }}
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          import sys
+
+          allowed = [
+              "win-debug",
+              "win-release",
+              "gcc-debug",
+              "gcc-release",
+              "clang-debug",
+              "clang-release",
+              "mac-x64-debug",
+              "mac-x64-release",
+              "mac-arm64-debug",
+              "mac-arm64-release",
+              "contracts",
+          ]
+
+          raw = os.environ["REQUESTED_JOBS"].strip()
+
+          if raw == "full":
+              selected = allowed
+          else:
+              requested = [item.strip() for item in raw.split(",") if item.strip()]
+
+              if not requested:
+                  print("error: jobs must be 'full' or a comma-separated list of validation unit IDs", file=sys.stderr)
+                  sys.exit(1)
+
+              if "full" in requested:
+                  print("error: 'full' must be used by itself", file=sys.stderr)
+                  sys.exit(1)
+
+              unknown = sorted(set(requested) - set(allowed))
+              if unknown:
+                  print(f"error: unknown validation unit(s): {', '.join(unknown)}", file=sys.stderr)
+                  sys.exit(1)
+
+              requested_set = set(requested)
+              selected = [item for item in allowed if item in requested_set]
+
+          selected_set = set(selected)
+
+          windows = []
+          if "win-debug" in selected_set:
+              windows.append({"build_type": "Debug"})
+          if "win-release" in selected_set:
+              windows.append({"build_type": "Release"})
+
+          unix_definitions = {
+              "gcc-debug": {
+                  "name": "Linux GCC x64",
+                  "os": "ubuntu-24.04",
+                  "cc": "gcc",
+                  "cxx": "g++",
+                  "build_type": "Debug",
+              },
+              "gcc-release": {
+                  "name": "Linux GCC x64",
+                  "os": "ubuntu-24.04",
+                  "cc": "gcc",
+                  "cxx": "g++",
+                  "build_type": "Release",
+              },
+              "clang-debug": {
+                  "name": "Linux Clang x64",
+                  "os": "ubuntu-24.04",
+                  "cc": "clang",
+                  "cxx": "clang++",
+                  "build_type": "Debug",
+              },
+              "clang-release": {
+                  "name": "Linux Clang x64",
+                  "os": "ubuntu-24.04",
+                  "cc": "clang",
+                  "cxx": "clang++",
+                  "build_type": "Release",
+              },
+              "mac-x64-debug": {
+                  "name": "macOS AppleClang x64",
+                  "os": "macos-15-intel",
+                  "cc": "clang",
+                  "cxx": "clang++",
+                  "build_type": "Debug",
+              },
+              "mac-x64-release": {
+                  "name": "macOS AppleClang x64",
+                  "os": "macos-15-intel",
+                  "cc": "clang",
+                  "cxx": "clang++",
+                  "build_type": "Release",
+              },
+              "mac-arm64-debug": {
+                  "name": "macOS AppleClang arm64",
+                  "os": "macos-15",
+                  "cc": "clang",
+                  "cxx": "clang++",
+                  "build_type": "Debug",
+              },
+              "mac-arm64-release": {
+                  "name": "macOS AppleClang arm64",
+                  "os": "macos-15",
+                  "cc": "clang",
+                  "cxx": "clang++",
+                  "build_type": "Release",
+              },
+          }
+
+          unix = [
+              unix_definitions[item]
+              for item in allowed
+              if item in selected_set and item in unix_definitions
+          ]
+
+          run_contracts = "contracts" in selected_set
+
+          outputs = {
+              "windows": json.dumps(windows, separators=(",", ":")),
+              "unix": json.dumps(unix, separators=(",", ":")),
+              "run_windows": str(bool(windows)).lower(),
+              "run_unix": str(bool(unix)).lower(),
+              "run_contracts": str(run_contracts).lower(),
+              "selected": ",".join(selected),
+          }
+
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
+              for key, value in outputs.items():
+                  print(f"{key}={value}", file=output)
+
+          print("Selected validation units:")
+          for item in selected:
+              print(f"- {item}")
+          PY
+
   windows:
     name: Windows MSVC x64 / ${{ matrix.build_type }}
+    needs: plan
+    if: ${{ needs.plan.outputs.run_windows == 'true' }}
     runs-on: windows-2022
     timeout-minutes: 15
 
     strategy:
       fail-fast: false
       matrix:
-        build_type:
-          - Debug
-          - Release
+        include: ${{ fromJSON(needs.plan.outputs.windows) }}
 
     steps:
       - name: Checkout
@@ -48,41 +212,15 @@ jobs:
 
   unix:
     name: ${{ matrix.name }} / ${{ matrix.build_type }}
+    needs: plan
+    if: ${{ needs.plan.outputs.run_unix == 'true' }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 15
 
     strategy:
       fail-fast: false
       matrix:
-        build_type:
-          - Debug
-          - Release
-        target:
-          - linux-gcc
-          - linux-clang
-          - macos-x64
-          - macos-arm64
-        include:
-          - target: linux-gcc
-            name: Linux GCC x64
-            os: ubuntu-24.04
-            cc: gcc
-            cxx: g++
-          - target: linux-clang
-            name: Linux Clang x64
-            os: ubuntu-24.04
-            cc: clang
-            cxx: clang++
-          - target: macos-x64
-            name: macOS AppleClang x64
-            os: macos-15-intel
-            cc: clang
-            cxx: clang++
-          - target: macos-arm64
-            name: macOS AppleClang arm64
-            os: macos-15
-            cc: clang
-            cxx: clang++
+        include: ${{ fromJSON(needs.plan.outputs.unix) }}
 
     env:
       CC: ${{ matrix.cc }}
@@ -111,6 +249,8 @@ jobs:
 
   contracts:
     name: Linux Clang / no exceptions / no RTTI / ASan+UBSan
+    needs: plan
+    if: ${{ needs.plan.outputs.run_contracts == 'true' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 15
 
@@ -142,3 +282,51 @@ jobs:
 
       - name: Test
         run: ctest --test-dir build --output-on-failure
+
+  ci-gate:
+    name: CI Gate
+    if: ${{ always() }}
+    needs:
+      - plan
+      - windows
+      - unix
+      - contracts
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+
+    steps:
+      - name: Verify requested validation results
+        shell: bash
+        env:
+          PLAN_RESULT: ${{ needs.plan.result }}
+          RUN_WINDOWS: ${{ needs.plan.outputs.run_windows }}
+          WINDOWS_RESULT: ${{ needs.windows.result }}
+          RUN_UNIX: ${{ needs.plan.outputs.run_unix }}
+          UNIX_RESULT: ${{ needs.unix.result }}
+          RUN_CONTRACTS: ${{ needs.plan.outputs.run_contracts }}
+          CONTRACTS_RESULT: ${{ needs.contracts.result }}
+          SELECTED: ${{ needs.plan.outputs.selected }}
+        run: |
+          set -euo pipefail
+
+          if [[ "$PLAN_RESULT" != "success" ]]; then
+            echo "Validation plan failed."
+            exit 1
+          fi
+
+          if [[ "$RUN_WINDOWS" == "true" && "$WINDOWS_RESULT" != "success" ]]; then
+            echo "Windows validation failed: $WINDOWS_RESULT"
+            exit 1
+          fi
+
+          if [[ "$RUN_UNIX" == "true" && "$UNIX_RESULT" != "success" ]]; then
+            echo "Unix validation failed: $UNIX_RESULT"
+            exit 1
+          fi
+
+          if [[ "$RUN_CONTRACTS" == "true" && "$CONTRACTS_RESULT" != "success" ]]; then
+            echo "Contracts validation failed: $CONTRACTS_RESULT"
+            exit 1
+          fi
+
+          echo "Requested validation passed: $SELECTED"
