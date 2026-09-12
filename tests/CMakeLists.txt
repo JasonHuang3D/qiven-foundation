@@ -111,6 +111,21 @@ set_target_properties(
 
 add_test(NAME qiven-foundation.owned-allocation COMMAND qiven-foundation-owned-allocation)
 
+add_executable(qiven-foundation-owned-array owned_array.cpp)
+
+target_link_libraries(qiven-foundation-owned-array PRIVATE qiven::foundation)
+qiven_enable_test_warnings(qiven-foundation-owned-array)
+
+set_target_properties(
+    qiven-foundation-owned-array
+    PROPERTIES
+        CXX_EXTENSIONS OFF
+        FOLDER "Tests"
+        VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+)
+
+add_test(NAME qiven-foundation.owned-array COMMAND qiven-foundation-owned-array)
+
 add_executable(qiven-foundation-owned-object owned_object.cpp)
 
 target_link_libraries(qiven-foundation-owned-object PRIVATE qiven::foundation)
@@ -264,6 +279,7 @@ add_library(
         headers/layout.cpp
         headers/linear_arena.cpp
         headers/owned_allocation.cpp
+        headers/owned_array.cpp
         headers/owned_object.cpp
         headers/platform.cpp
         headers/system_allocator.cpp
