@@ -1,11 +1,11 @@
 #pragma once
 
-#include <bit>
 #include <concepts>
 #include <memory>
 #include <type_traits>
 
 #include <qiven/contracts.hpp>
+#include <qiven/memory/layout.hpp>
 #include <qiven/types.hpp>
 
 namespace qiven::memory
@@ -34,29 +34,38 @@ public:
 
     [[nodiscard]] void* try_allocate(usize size, usize alignment) const noexcept
     {
-        QIVEN_ASSERT(std::has_single_bit(alignment));
+        return try_allocate(Layout::from_size_alignment(size, alignment));
+    }
 
-        if (size == 0)
+    [[nodiscard]] void* try_allocate(Layout layout) const noexcept
+    {
+        if (layout.size() == 0)
             return nullptr;
 
-        void* const memory = vtable_->try_allocate(context_, size, alignment);
+        void* const memory = vtable_->try_allocate(context_, layout.size(), layout.alignment());
 
-        QIVEN_ASSERT(memory == nullptr || (reinterpret_cast<uptr>(memory) & static_cast<uptr>(alignment - 1)) == 0);
+        QIVEN_ASSERT(
+            memory == nullptr ||
+            (reinterpret_cast<uptr>(memory) & static_cast<uptr>(layout.alignment() - 1)) == 0);
 
         return memory;
     }
 
     void deallocate(void* memory, usize size, usize alignment) const noexcept
     {
-        QIVEN_ASSERT(std::has_single_bit(alignment));
+        deallocate(memory, Layout::from_size_alignment(size, alignment));
+    }
 
+    void deallocate(void* memory, Layout layout) const noexcept
+    {
         if (memory == nullptr)
             return;
 
-        QIVEN_ASSERT(size != 0);
-        QIVEN_ASSERT((reinterpret_cast<uptr>(memory) & static_cast<uptr>(alignment - 1)) == 0);
+        QIVEN_ASSERT(layout.size() != 0);
+        QIVEN_ASSERT(
+            (reinterpret_cast<uptr>(memory) & static_cast<uptr>(layout.alignment() - 1)) == 0);
 
-        vtable_->deallocate(context_, memory, size, alignment);
+        vtable_->deallocate(context_, memory, layout.size(), layout.alignment());
     }
 
 private:

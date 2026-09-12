@@ -1,4 +1,5 @@
 #include <qiven/memory/allocator.hpp>
+#include <qiven/memory/layout.hpp>
 
 #include <cstddef>
 #include <type_traits>
@@ -7,6 +8,7 @@ namespace
 {
 using qiven::usize;
 using qiven::memory::AllocatorRef;
+using qiven::memory::Layout;
 
 struct TestAllocator
 {
@@ -56,6 +58,50 @@ static_assert(std::is_constructible_v<AllocatorRef, TestAllocator&>);
 static_assert(!std::is_constructible_v<AllocatorRef, const TestAllocator&>);
 static_assert(!std::is_constructible_v<AllocatorRef, TestAllocator&&>);
 static_assert(!std::is_constructible_v<AllocatorRef, ThrowingAllocator&>);
+
+[[nodiscard]] bool verify_layout_overloads() noexcept
+{
+    TestAllocator allocator;
+    AllocatorRef ref { allocator };
+
+    const Layout zero_layout = Layout::from_size_alignment(0, 32);
+    if (ref.try_allocate(zero_layout) != nullptr || allocator.allocation_calls != 0)
+        return false;
+
+    const Layout layout = Layout::from_size_alignment(48, 64);
+    void* const memory  = ref.try_allocate(layout);
+    if (memory != allocator.storage ||
+        allocator.allocation_calls != 1 ||
+        allocator.allocation_size != layout.size() ||
+        allocator.allocation_alignment != layout.alignment())
+        return false;
+
+    allocator.fail = true;
+    if (ref.try_allocate(Layout::from_size_alignment(24, 8)) != nullptr || allocator.allocation_calls != 2)
+        return false;
+
+    ref.deallocate(nullptr, zero_layout);
+    if (allocator.deallocation_calls != 0)
+        return false;
+
+    ref.deallocate(memory, layout);
+    if (allocator.deallocation_calls != 1 ||
+        allocator.deallocated_memory != memory ||
+        allocator.deallocation_size != layout.size() ||
+        allocator.deallocation_alignment != layout.alignment())
+        return false;
+
+    allocator.fail           = false;
+    AllocatorRef copy        = ref;
+    const Layout copy_layout = Layout::from_size_alignment(16, 16);
+    if (copy.try_allocate(copy_layout) != allocator.storage ||
+        allocator.allocation_calls != 3 ||
+        allocator.allocation_size != copy_layout.size() ||
+        allocator.allocation_alignment != copy_layout.alignment())
+        return false;
+
+    return true;
+}
 } // namespace
 
 int main()
@@ -94,6 +140,9 @@ int main()
     if (allocator.deallocation_calls != 1 || allocator.deallocated_memory != memory || allocator.deallocation_size != 32 ||
         allocator.deallocation_alignment != 64)
         return 10;
+
+    if (!verify_layout_overloads())
+        return 11;
 
     return 0;
 }
