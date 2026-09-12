@@ -156,19 +156,21 @@ Feature count is a safety boundary, not a productivity target.
 
 Do not intentionally consume the entire Work allowance.
 
-When a reliable usage indicator is available, roughly half of the available usage window is the normal soft budget for a
-batch.
+When a reliable usage indicator is available, roughly one third of the available usage window is the normal soft budget for a
+batch unless the CTO specification defines a different limit.
+
+A lower CTO-specified limit takes precedence.
 
 Before beginning another feature, consider whether enough capacity remains to:
 
 - understand the feature;
 - implement it;
-- test it;
+- run its required validation profile;
 - repair normal defects;
 - format;
 - inspect the diff;
 - commit;
-- produce a coherent handoff.
+- leave enough reserve for final batch validation and handoff.
 
 If not, do not begin it.
 
@@ -202,23 +204,39 @@ The next step is Chat-mode push, GitHub CI, CTO review, and merge.
 
 ## 11. Starting a batch
 
-Before changing files:
+Before creating or modifying any feature branch:
 
 ```cmd
 git status
 git branch --show-current
 git log -1 --oneline
+tools\format-check.cmd
+git diff --check
 ```
 
 Verify:
 
 - the working tree is clean;
 - the expected base branch is checked out;
-- the expected base commit is present.
+- the expected base commit is present;
+- the repository formatting baseline passes;
+- no existing local diff is present.
 
-Read all mandatory engineering documents from `AGENTS.md`.
+Read all mandatory engineering documents from `AGENTS.md` once for the batch.
 
 Read the entire authorized feature queue before implementing Feature A so dependency order is understood.
+
+If `tools\format-check.cmd` fails on the clean authorized base before feature work begins, do not create a feature branch and do
+not repair unrelated files autonomously.
+
+Stop with:
+
+`BASELINE_VALIDATION_BLOCKED`
+
+Report the failing command and affected files.
+
+Do not classify a pre-existing formatting or validation defect as an architectural contradiction merely because it blocks the
+batch.
 
 Do not modify unrelated existing local work.
 
@@ -253,20 +271,30 @@ When discovering a blocking ambiguity:
 
 ## 14. Required local validation
 
-For ordinary C++ features, first make newly created C/C++ files visible to the tracked-file formatting scripts without
+For every ordinary C++ feature, first make newly created C/C++ files visible to the tracked-file formatting scripts without
 staging their contents:
 
 ```cmd
 git add -N -- <each new C/C++ file created by this feature>
 ```
 
-Name only the new files created by the current feature. Do not use a broad `git add -N .`.
+Name only the files created by the current feature. Do not use a broad `git add -N .`.
 
-Then run:
+Then always run:
 
 ```cmd
 tools\format.cmd
 tools\format-check.cmd
+git diff --check
+```
+
+### FULL validation
+
+`FULL` is the default profile.
+
+Run:
+
+```cmd
 tools\gen-vs2022-x64.cmd
 cmake --build --preset vs2022-x64-debug --parallel
 ctest --preset vs2022-x64-debug
@@ -274,8 +302,36 @@ cmake --build --preset vs2022-x64-release --parallel
 ctest --preset vs2022-x64-release
 ```
 
-The exact order may be adjusted to avoid redundant generation, but every required check must pass before the feature is called
-complete.
+### FOCUSED validation
+
+`FOCUSED` may be used only when the CTO feature specification explicitly selects it and provides exact build targets, tests,
+selectors, or commands.
+
+Run the authorized focused validation in both Debug and Release configurations.
+
+Do not infer that a target or test is irrelevant merely because it appears unrelated.
+
+If the CTO specification says `FOCUSED` but does not define a sufficiently precise validation scope, fall back to `FULL`
+rather than guessing.
+
+Architectural barriers and cross-cutting infrastructure work use `FULL` unless explicitly overridden.
+
+### Batch-final validation
+
+Before normal completion of the authorized queue, the final stack tip must pass:
+
+```cmd
+tools\format-check.cmd
+cmake --build --preset vs2022-x64-debug --parallel
+ctest --preset vs2022-x64-debug
+cmake --build --preset vs2022-x64-release --parallel
+ctest --preset vs2022-x64-release
+```
+
+This batch-final full validation supplements feature-level focused validation; it does not replace semantic feature tests.
+
+If the batch stops early for an unrelated blocker before normal completion, report whether batch-final validation was run
+rather than pretending it passed.
 
 If only documentation changes, follow the documentation-only rule in `testing-standard.md`.
 
@@ -336,7 +392,7 @@ The working tree should be clean.
 Continue only if all are true:
 
 - current feature is committed;
-- required local validation passed;
+- the feature's required validation profile passed;
 - working tree is clean;
 - no architectural review is pending;
 - next feature is explicitly in the authorized queue;
@@ -346,6 +402,14 @@ Continue only if all are true:
 Otherwise stop.
 
 ## 18. Failure handling
+
+### Baseline validation failure
+
+If the clean authorized base fails repository validation before feature implementation begins:
+
+`BASELINE_VALIDATION_BLOCKED`
+
+Do not repair unrelated baseline files unless the CTO explicitly authorizes a maintenance scope.
 
 ### Local implementation/test failure inside scope
 
@@ -377,6 +441,23 @@ Do not “finish the rest of the batch first.”
 
 ## 19. Handoff format
 
+Do not emit the complete handoff after each successful feature while the batch is still continuing.
+
+For a mid-batch blocker, return only:
+
+```text
+JASON-WORKER BLOCKER
+
+Type:
+Branch:
+Commit/worktree state:
+Condition or failing command:
+Evidence:
+User/CTO action required:
+```
+
+The complete handoff below is reserved for actual batch termination.
+
 At the end of the batch, return a report in this structure:
 
 ```text
@@ -393,11 +474,10 @@ Feature 1:
   Summary:
   Files:
   Tests:
+  Validation profile:
   Format:
-  Debug build:
-  Debug tests:
-  Release build:
-  Release tests:
+  Debug validation:
+  Release validation:
   Cross-platform status: NOT VERIFIED LOCALLY
   Assumptions:
   Concerns:
@@ -407,8 +487,11 @@ Feature 1:
 Feature 2:
   ...
 
+Batch-final validation:
+<FULL PASS | NOT RUN | WAIVED BY CTO>
+
 Batch stop reason:
-<AUTHORIZED_QUEUE_COMPLETED | ARCHITECTURAL_REVIEW_REQUIRED |
+<AUTHORIZED_QUEUE_COMPLETED | ARCHITECTURAL_REVIEW_REQUIRED | BASELINE_VALIDATION_BLOCKED |
  LOCAL_TEST_FAILURE | ENVIRONMENT_BLOCKED | USAGE_BUDGET_SOFT_STOP>
 
 Local branches created:

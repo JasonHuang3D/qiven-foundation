@@ -40,9 +40,9 @@ Do not implement something you believe is technically incorrect merely because a
 If the requested semantics are inconsistent, unsafe, impossible within the approved scope, or conflict with repository
 architecture, stop and report the conflict.
 
-## 2. Mandatory preflight reading
+## 2. Mandatory batch preflight reading
 
-Before modifying code for any feature, read all of the following:
+At the start of each Work batch, before modifying code, read all of the following:
 
 1. this `AGENTS.md`;
 2. `docs/architecture/foundation.md`;
@@ -52,9 +52,22 @@ Before modifying code for any feature, read all of the following:
 6. `docs/engineering/worker-protocol.md`;
 7. the complete CTO feature specification for the current batch.
 
-Also read any deeper `AGENTS.md` that applies to files you intend to modify.
+Also read any deeper `AGENTS.md` that applies to files expected to be modified during the batch.
 
-Do not begin implementation until the feature scope, base branch, stop conditions, and required validation are understood.
+Treat this engineering context as loaded for the duration of the batch.
+
+Before each subsequent feature in the same batch, re-read only:
+
+- the current feature specification;
+- the relevant architecture or engineering sections for the contracts being changed;
+- any applicable deeper `AGENTS.md`;
+- any mandatory engineering document that changed during the current batch.
+
+Do not repeatedly re-read every mandatory engineering document for every feature unless the feature enters a previously
+unexamined subsystem or the applicable rules are uncertain.
+
+Do not begin implementation until the batch scope, feature order, base branch, stop conditions, and required validation are
+understood.
 
 `docs/engineering/feature-spec.md` defines the contract expected from CTO feature specifications. If a supplied feature
 specification is incomplete in a way that affects architecture or externally observable semantics, do not guess. Escalate.
@@ -412,61 +425,86 @@ The authorized feature queue is always finite.
 
 Default planning rule:
 
-- ordinary batch: approximately 3 features;
+- ordinary batch: approximately 2 to 3 features;
 - up to 5 only when explicitly authorized and the features are low-risk;
 - stop earlier at any architectural barrier;
-- if a reliable usage indicator is visible, treat roughly half of the available Work usage window as the normal soft budget;
+- if a reliable usage indicator is visible, treat roughly one third of the available Work usage window as the normal soft
+  budget unless the CTO specification defines a different limit;
+- a lower CTO-specified budget always takes precedence;
 - do not start a new feature when doing so risks consuming the safety reserve needed to leave the current work coherent.
 
 Do not invent exact quota numbers when the runtime does not expose them.
+
+The soft budget is a stop constraint, not permission to add work beyond the authorized feature queue.
 
 When the soft budget is reached, finish the current safe checkpoint, report `USAGE_BUDGET_SOFT_STOP`, and stop.
 
 ## 22. Validation and local Definition of Done
 
-For ordinary C++ source features, completion requires:
+Every source feature must pass the validation profile explicitly required by the CTO feature specification.
+
+Two local validation profiles exist:
+
+- `FULL`;
+- `FOCUSED`.
+
+`FULL` is the default.
+
+`FOCUSED` is permitted only when the CTO feature specification explicitly authorizes it and identifies the exact build targets
+and tests or exact validation commands. jason-worker must not invent a reduced test scope.
+
+Regardless of profile, every ordinary source feature still requires:
 
 1. approved scope implemented;
 2. appropriate tests added or updated;
 3. formatting complete;
-4. Visual Studio 2022 Debug build passes;
-5. Debug tests pass;
-6. Visual Studio 2022 Release build passes;
-7. Release tests pass;
-8. complete diff reviewed;
-9. no unrelated changes remain;
-10. feature committed on the correct local branch;
-11. working tree clean.
+4. the required Debug validation passes;
+5. the required Release validation passes;
+6. complete diff reviewed;
+7. `git diff --check` passes;
+8. no unrelated changes remain;
+9. feature committed on the correct local branch;
+10. working tree clean.
 
-Use the repository presets and pinned toolchain described in the engineering docs.
+Architectural barriers and cross-cutting infrastructure changes require `FULL` validation unless the CTO explicitly states
+otherwise.
+
+Before a normally completed batch is handed off, the final stack tip must receive one `FULL` Debug and Release repository
+validation unless the CTO batch specification explicitly waives it.
 
 A local pass makes the feature a candidate for CTO review. It does not mean the feature is accepted or merged.
 
 Cross-platform GitHub CI remains a later release gate.
 
-## 23. Handoff
+## 23. Handoff and blockers
 
-At the end of each feature and batch, provide a structured handoff containing:
+Do not produce a full user-visible handoff after every successfully completed feature in a continuing batch.
 
-- feature name;
-- branch;
-- base branch;
-- commit SHA;
-- concise implementation summary;
-- files changed;
-- tests changed;
-- formatting result;
-- Debug build/test result;
-- Release build/test result;
-- unverified cross-platform assumptions;
-- concerns or deferred opportunities;
-- whether CTO review is required;
-- reason the batch stopped.
+Record each completed feature's branch, commit SHA, validation results, assumptions, and concerns for inclusion in the final
+batch handoff.
+
+If work must stop before the authorized queue is complete, return a concise blocker report:
+
+`JASON-WORKER BLOCKER`
+
+Include only:
+
+- blocker type;
+- current branch and commit state;
+- exact failing command or condition;
+- relevant evidence;
+- working-tree state;
+- whether user or CTO action is required.
+
+Do not repeat the complete batch history in every blocker report.
+
+When the batch actually ends, provide the complete structured `JASON-WORKER HANDOFF`.
 
 Valid stop reasons include:
 
 - `AUTHORIZED_QUEUE_COMPLETED`
 - `ARCHITECTURAL_REVIEW_REQUIRED`
+- `BASELINE_VALIDATION_BLOCKED`
 - `LOCAL_TEST_FAILURE`
 - `ENVIRONMENT_BLOCKED`
 - `USAGE_BUDGET_SOFT_STOP`

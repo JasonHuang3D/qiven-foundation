@@ -28,6 +28,7 @@ Base branch:
 Base commit: <optional when branch state is authoritative>
 Maximum features:
 Usage policy:
+Batch-final validation:
 Remote policy: local only; no push/merge/PR
 ```
 
@@ -61,6 +62,8 @@ Performance/cost constraints:
 Platform constraints:
 Expected integration:
 Required tests:
+Validation profile:
+Focused validation:
 Out of scope:
 Stop conditions:
 Documentation:
@@ -248,6 +251,39 @@ Required tests:
 The worker may add another directly relevant test when it exposes a meaningful risk, but should not inflate test count
 mechanically.
 
+### Validation profile
+
+Every source feature should state:
+
+```text
+Validation profile:
+FULL
+```
+
+or:
+
+```text
+Validation profile:
+FOCUSED
+
+Focused validation:
+<exact build targets, tests, selectors, or commands>
+```
+
+`FULL` is the default when this field is omitted.
+
+Do not select `FOCUSED` merely because a feature appears small. Use it only when the affected build and test surface is known
+well enough to specify precisely.
+
+A batch that contains focused feature validation should normally specify:
+
+```text
+Batch-final validation:
+FULL
+```
+
+so the complete stack receives one repository-wide Debug and Release validation before handoff.
+
 ## 14. Out of scope
 
 This is one of the most important sections.
@@ -393,6 +429,9 @@ Before handing a batch to Work, ask:
 - Are ownership and failure semantics decided?
 - Is out-of-scope work explicit?
 - Are high-risk test cases named?
+- Is the validation profile explicit?
+- If validation is focused, are the exact targets/tests unambiguous?
+- Is batch-final full validation required or explicitly waived?
 - Are architectural barriers identified?
 - Is the queue small enough to review later?
 - Would a senior engineer understand when to stop without asking trivial questions?

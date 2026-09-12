@@ -117,10 +117,13 @@ When adding a public header, update the existing header-check target according t
 
 A header compiling only because another test included prerequisites first is not sufficient.
 
-## 9. Debug and Release local validation
+## 9. Local validation profiles
 
-For ordinary source features, jason-worker must validate both configurations using the repository's Visual Studio 2022 CMake
-presets.
+Qiven Foundation supports two Work-mode local validation profiles.
+
+### FULL
+
+`FULL` is the default.
 
 Configure/generate as needed:
 
@@ -142,10 +145,28 @@ cmake --build --preset vs2022-x64-release --parallel
 ctest --preset vs2022-x64-release
 ```
 
-Use `--output-on-failure` if invoking CTest outside a preset or when additional diagnostic output is needed.
+### FOCUSED
 
-If the repository later changes its authoritative local workflow, update this document rather than maintaining hidden
-alternative commands.
+`FOCUSED` is an optimization for CTO-authorized batches, not a worker-selected shortcut.
+
+It may be used only when the current CTO feature specification explicitly identifies the exact build targets and test scope,
+or supplies the exact commands.
+
+Focused validation must exercise the authorized scope in both Debug and Release configurations.
+
+If the focused scope is missing, ambiguous, or becomes insufficient because implementation changes broaden the affected area,
+use `FULL` or stop for CTO review as appropriate.
+
+Architectural barriers and cross-cutting infrastructure changes normally require `FULL`.
+
+### Batch-final full validation
+
+When one or more features in a batch use `FOCUSED`, the final stack tip must normally receive one complete `FULL` Debug and
+Release validation before batch handoff.
+
+This preserves repository-level confidence while avoiding repeated full-suite execution after every small stacked feature.
+
+GitHub CI remains an independent later cross-platform gate.
 
 ## 10. Formatting validation
 
@@ -188,6 +209,9 @@ Do not commit a feature as complete with known required local test failures.
 
 If the failure requires architectural scope expansion or unrelated changes, stop with `CTO REVIEW REQUIRED` or
 `ENVIRONMENT_BLOCKED` as appropriate.
+
+A failure already present on the clean authorized base before feature implementation is `BASELINE_VALIDATION_BLOCKED`, not a
+feature implementation failure.
 
 ## 13. Never weaken the detector
 
@@ -235,7 +259,8 @@ They remain responsibilities of later GitHub CI and CTO review.
 The repository may later introduce CTest labels, affected-target analysis, caching, sharding, or other incremental CI
 mechanisms.
 
-Until such mechanisms are explicitly part of the repository contract, do not invent per-feature shortcuts that skip existing
-required local tests.
+The CTO-authorized `FOCUSED` validation profile is the only current mechanism for reducing per-feature local validation scope.
+
+Outside that explicit profile, do not invent per-feature shortcuts that skip required local tests.
 
 Optimization of test latency must preserve confidence, not merely reduce elapsed time.
