@@ -134,6 +134,10 @@ Raw allocation requests always carry both size and alignment. Alignment is a non
 reported by returning `nullptr`; exceptions and process-global out-of-memory handlers are not part of the primitive contract.
 A zero-size allocation is canonicalized to `nullptr` without calling the backend.
 
+`qiven::memory::Layout` is a validated value containing a byte size and a non-zero power-of-two alignment. A layout for a
+complete object type uses that type's `sizeof` and `alignof`; an array layout uses the checked product of element size and
+count without adding padding or changing element stride.
+
 Deallocation of `nullptr` is a no-op. A non-null pointer must be returned to the same allocator backend with the same size
 and alignment used for the successful allocation request.
 
