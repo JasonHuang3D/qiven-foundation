@@ -111,6 +111,21 @@ set_target_properties(
 
 add_test(NAME qiven-foundation.owned-allocation COMMAND qiven-foundation-owned-allocation)
 
+add_executable(qiven-foundation-layout layout.cpp)
+
+target_link_libraries(qiven-foundation-layout PRIVATE qiven::foundation)
+qiven_enable_test_warnings(qiven-foundation-layout)
+
+set_target_properties(
+    qiven-foundation-layout
+    PROPERTIES
+        CXX_EXTENSIONS OFF
+        FOLDER "Tests"
+        VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+)
+
+add_test(NAME qiven-foundation.layout COMMAND qiven-foundation-layout)
+
 add_executable(qiven-foundation-checked-arithmetic checked_arithmetic.cpp)
 
 target_link_libraries(qiven-foundation-checked-arithmetic PRIVATE qiven::foundation)
@@ -231,6 +246,7 @@ add_library(
         headers/config.cpp
         headers/contracts.cpp
         headers/endian.cpp
+        headers/layout.cpp
         headers/linear_arena.cpp
         headers/owned_allocation.cpp
         headers/platform.cpp

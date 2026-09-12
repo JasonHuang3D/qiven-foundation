@@ -46,6 +46,7 @@ set(
     ${CMAKE_CURRENT_SOURCE_DIR}/include/qiven/contracts.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/qiven/endian.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/qiven/memory/allocator.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/qiven/memory/layout.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/qiven/memory/linear_arena.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/qiven/memory/owned_allocation.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/qiven/memory/system_allocator.hpp
