@@ -128,7 +128,8 @@ that own dynamic storage should expose enough semantics for allocation strategy 
 
 The allocator boundary is `qiven::memory::AllocatorRef`, a non-owning type-erased reference to an allocator backend. The
 backend object must outlive every `AllocatorRef` that refers to it. The reference itself owns no memory and performs no
-allocation while dispatching.
+allocation while dispatching. AllocatorRef accepts either a validated `Layout` or an explicit size and alignment at its
+frontend; allocator backends continue to receive separate size and alignment values.
 
 Raw allocation requests always carry both size and alignment. Alignment is a non-zero power of two. Allocation failure is
 reported by returning `nullptr`; exceptions and process-global out-of-memory handlers are not part of the primitive contract.
