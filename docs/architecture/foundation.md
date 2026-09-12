@@ -150,6 +150,11 @@ so object lifetime remains the caller's responsibility. The arena is not thread-
 The allocator protocol does not require immediate or individual reclamation. A backend may defer reclamation or make
 `deallocate` a no-op when its lifetime model is explicit.
 
+`qiven::memory::OwnedAllocation` is a move-only owner of raw allocator storage. It retains the allocator reference, pointer,
+size, and alignment required to return the allocation through its originating backend. The allocator backend must outlive the
+owner. Allocation failure is represented separately from a successful zero-size allocation, and ownership transfer leaves the
+source empty. OwnedAllocation manages raw storage only; it does not construct or destroy C++ objects in that storage.
+
 ## 9. RTTI and runtime type machinery
 
 Foundation APIs must not require RTTI for their core semantics.

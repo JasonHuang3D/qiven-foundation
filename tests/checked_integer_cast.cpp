@@ -7,19 +7,18 @@
 
 namespace
 {
-using qiven::i8;
 using qiven::i16;
 using qiven::i32;
 using qiven::i64;
-using qiven::u8;
+using qiven::i8;
 using qiven::u16;
 using qiven::u32;
 using qiven::u64;
+using qiven::u8;
 using qiven::usize;
 
 template <typename To, typename From>
-concept can_checked_integer_cast = requires(From value)
-{
+concept can_checked_integer_cast = requires(From value) {
     qiven::checked_integer_cast<To>(value);
 };
 
