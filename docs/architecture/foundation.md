@@ -165,6 +165,11 @@ storage.
 Construction and destruction must be non-throwing, and allocation failure is represented by `std::nullopt`. Moving ownership
 does not move the `T` object. Destruction of `T` occurs before its raw storage is deallocated.
 
+`qiven::memory::OwnedArray<T>` owns a contiguous sequence of live, value-initialized `T` objects in storage described by
+`Layout::array<T>`. Construction and destruction are non-throwing; layout or allocation failure is represented by
+`std::nullopt`, while a zero count succeeds without allocating. Moving ownership does not move the elements, and every element
+is destroyed before the raw storage is deallocated.
+
 ## 9. RTTI and runtime type machinery
 
 Foundation APIs must not require RTTI for their core semantics.
