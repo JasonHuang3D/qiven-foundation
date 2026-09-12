@@ -1,4 +1,5 @@
 #include <qiven/memory/allocator.hpp>
+#include <qiven/memory/layout.hpp>
 #include <qiven/memory/owned_allocation.hpp>
 #include <qiven/types.hpp>
 
@@ -12,6 +13,7 @@ namespace
 {
 using qiven::usize;
 using qiven::memory::AllocatorRef;
+using qiven::memory::Layout;
 using qiven::memory::OwnedAllocation;
 
 class TrackingAllocator
@@ -60,10 +62,11 @@ static_assert(std::is_nothrow_move_assignable_v<OwnedAllocation>);
 bool verify_success_and_destruction()
 {
     TrackingAllocator backend;
-    void* allocated = nullptr;
+    void* allocated     = nullptr;
+    const Layout layout = Layout::from_size_alignment(96, 32);
 
     {
-        auto allocation = OwnedAllocation::try_allocate(AllocatorRef { backend }, 96, 32);
+        auto allocation = OwnedAllocation::try_allocate(AllocatorRef { backend }, layout);
         if (!allocation)
             return false;
 
@@ -72,6 +75,8 @@ bool verify_success_and_destruction()
         if (allocated == nullptr ||
             allocation->size() != 96 ||
             allocation->alignment() != 32 ||
+            allocation->layout().size() != allocation->size() ||
+            allocation->layout().alignment() != allocation->alignment() ||
             allocation->empty())
             return false;
 
@@ -93,7 +98,8 @@ bool verify_failure()
     TrackingAllocator backend;
     backend.fail_allocation = true;
 
-    const auto allocation = OwnedAllocation::try_allocate(AllocatorRef { backend }, 64, 16);
+    const auto allocation =
+        OwnedAllocation::try_allocate(AllocatorRef { backend }, Layout::from_size_alignment(64, 16));
 
     return !allocation &&
            backend.allocate_count == 1 &&
@@ -103,15 +109,18 @@ bool verify_failure()
 bool verify_zero_size()
 {
     TrackingAllocator backend;
+    const Layout layout = Layout::from_size_alignment(0, 64);
 
     {
-        auto allocation = OwnedAllocation::try_allocate(AllocatorRef { backend }, 0, 64);
+        auto allocation = OwnedAllocation::try_allocate(AllocatorRef { backend }, layout);
         if (!allocation)
             return false;
 
         if (allocation->data() != nullptr ||
             allocation->size() != 0 ||
             allocation->alignment() != 64 ||
+            allocation->layout().size() != 0 ||
+            allocation->layout().alignment() != 64 ||
             !allocation->empty())
             return false;
 
@@ -139,12 +148,16 @@ bool verify_move_construction()
         if (!source->empty() ||
             source->data() != nullptr ||
             source->size() != 0 ||
-            source->alignment() != 1)
+            source->alignment() != 1 ||
+            source->layout().size() != 0 ||
+            source->layout().alignment() != 1)
             return false;
 
         if (destination.data() != allocated ||
             destination.size() != 48 ||
             destination.alignment() != 16 ||
+            destination.layout().size() != 48 ||
+            destination.layout().alignment() != 16 ||
             destination.empty())
             return false;
 
@@ -190,12 +203,16 @@ bool verify_move_assignment_origins()
         if (!source->empty() ||
             source->data() != nullptr ||
             source->size() != 0 ||
-            source->alignment() != 1)
+            source->alignment() != 1 ||
+            source->layout().size() != 0 ||
+            source->layout().alignment() != 1)
             return false;
 
         if (destination->data() != source_memory ||
             destination->size() != 80 ||
             destination->alignment() != 32 ||
+            destination->layout().size() != 80 ||
+            destination->layout().alignment() != 32 ||
             destination->empty())
             return false;
     }
@@ -217,6 +234,7 @@ bool verify_self_move()
             return false;
 
         void* const memory           = allocation->data();
+        const Layout layout          = allocation->layout();
         OwnedAllocation* const owner = &*allocation;
 
         *owner = std::move(*owner);
@@ -224,6 +242,8 @@ bool verify_self_move()
         if (owner->data() != memory ||
             owner->size() != 40 ||
             owner->alignment() != 8 ||
+            owner->layout().size() != layout.size() ||
+            owner->layout().alignment() != layout.alignment() ||
             owner->empty())
             return false;
 
