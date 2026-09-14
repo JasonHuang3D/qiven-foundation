@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "template": "cpp-library",
+  "template_version": "0.1.2",
+  "repository_name": "qiven-foundation",
+  "cmake_project_name": "qiven-foundation",
+  "cmake_target_name": "qiven-foundation",
+  "cmake_alias": "qiven::foundation",
+  "cpp_namespace": "qiven",
+  "test_option_name": "QIVEN_BUILD_TESTS",
+  "vs_solution_name": "qiven-foundation"
+}
