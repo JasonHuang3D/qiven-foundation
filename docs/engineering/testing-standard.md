@@ -1,177 +1,83 @@
-# Qiven Foundation Testing Standard
+# Testing Standard
 
-Tests exist to validate semantics and protect architectural contracts.
+Tests exist to validate semantics and protect architectural contracts. The goal is not maximum test count; it is strong coverage of plausible ways a feature could be subtly wrong.
 
-The goal is not maximum test count. The goal is strong coverage of the ways a primitive could be subtly wrong.
+## 1. Tests are part of implementation
 
-## 1. Tests are part of the feature
-
-A feature is not implementation-complete when production code compiles.
-
-Tests should be designed while reasoning about the contract, not appended afterward as a checkbox.
-
-For each feature identify:
-
-- primary success behavior;
-- boundary states;
-- failure states;
-- ownership/lifetime transitions;
-- arithmetic hazards;
-- platform-sensitive assumptions;
-- invariants that a plausible incorrect implementation could violate.
+Design tests while reasoning about the contract, not after production code as a checkbox. For each feature identify primary success behavior, boundaries, failure states, ownership/lifetime transitions, arithmetic hazards, platform-sensitive assumptions, and invariants a plausible incorrect implementation could violate.
 
 ## 2. Test the contract, not implementation trivia
 
-Prefer tests that remain valid across reasonable internal refactors.
+Prefer tests that survive reasonable internal refactors. Do not overfit to private helper structure, incidental call order, internal representation, or behavior not promised by the contract.
 
-Do not overfit tests to:
+Inspect backend/resource interactions only when provenance, cleanup, or another interaction is itself part of the contract.
 
-- private helper structure;
-- incidental call order;
-- exact internal representation;
-- implementation details not promised by the contract.
+## 3. Risk families
 
-It is appropriate to inspect backend calls when allocator provenance, resource release, or another interaction is itself part of
-the contract.
+When applicable, cover:
 
-## 3. Resource-owning primitives
+- successful acquisition/use/destruction;
+- allocation or acquisition failure;
+- zero/empty success distinct from failure;
+- move construction/assignment and moved-from state;
+- destination cleanup and backend/allocator provenance;
+- minimum/maximum values and exact boundary success;
+- one-past-boundary failure, overflow, underflow, narrowing, sign changes;
+- alignment boundaries and invalid alignment according to contract;
+- exact/truncated/empty byte ranges and state after failure;
+- deterministic regression cases for defects already found.
 
-When applicable, test:
+Do not assume one happy-path test proves ownership or failure correctness.
 
-- successful acquisition;
-- destruction releases exactly the intended resource;
-- allocation/acquisition failure;
-- valid zero-size or empty success;
-- moved-from state;
-- move construction;
-- move assignment;
-- previous destination resource cleanup;
-- preservation of originating allocator/backend;
-- destruction after move;
-- self-move if the implementation deliberately supports or guards it.
+## 4. Determinism and isolation
 
-Do not assume one happy-path allocation test proves ownership correctness.
+Tests must be deterministic, isolated, readable, and capable of failing for the defect they protect against. Do not depend on test order, mutable developer-machine state, network availability, unpinned external data, or another test's leftovers.
 
-## 4. Integer and range primitives
+Filesystem/tooling tests should use disposable fixtures and verify cleanup where that behavior matters.
 
-When applicable, test:
+## 5. Contracts and undefined behavior
 
-- zero;
-- one;
-- typical values;
-- minimum/maximum representable values;
-- exact boundary success;
-- one-past-boundary failure;
-- overflow;
-- underflow;
-- narrowing;
-- sign changes;
-- empty ranges;
-- full ranges;
-- offset + length interactions.
+Do not write tests that deliberately depend on undefined behavior merely to prove an assertion exists. When behavior differs between assert-enabled and assert-disabled configurations, make that distinction explicit and consistent with repository policy.
 
-Prefer explicit values that expose the contract.
+Do not weaken a contract to make it easier to test.
 
-## 5. Alignment primitives
+## 6. Public-header checks
 
-When applicable, test:
+New or materially changed public headers must remain self-contained according to repository policy. Update header-check/build registration when required. A header compiling only because another translation unit included prerequisites first is insufficient.
 
-- smallest valid alignment;
-- typical power-of-two alignments;
-- already-aligned values;
-- values requiring adjustment;
-- boundary addresses/sizes;
-- invalid alignment behavior according to the contract;
-- overflow in align-up calculations if relevant.
+## 7. Local validation profiles
 
-## 6. Parsing and byte access
-
-When applicable, test:
-
-- exact-sized input;
-- truncated input;
-- empty input;
-- sequential reads;
-- boundary reads;
-- cursor/offset state after success;
-- cursor/offset state after failure;
-- endian correctness;
-- no out-of-bounds access.
-
-Failure should not silently corrupt parser state unless that behavior is explicitly part of the contract.
-
-## 7. Contracts and assertions
-
-Do not write tests that depend on undefined behavior merely to prove an assertion exists.
-
-When contract behavior differs between assert-enabled and assert-disabled configurations, make the distinction explicit and
-consistent with repository policy.
-
-Do not weaken a contract to make a test easier to write.
-
-## 8. Header checks
-
-New or materially changed public headers must remain self-contained.
-
-When adding a public header, update the existing header-check target according to repository convention.
-
-A header compiling only because another test included prerequisites first is not sufficient.
-
-## 9. Local validation profiles
-
-Qiven Foundation supports two Work-mode local validation profiles.
+Two Work-mode local validation profiles exist.
 
 ### FULL
 
-`FULL` is the default.
+`FULL` is the default. It includes repository-required Debug and Release build/test coverage plus formatting, diff inspection, and `git diff --check`.
 
-Configure/generate as needed:
+For the standard generated C++ library workflow, configure/generate as needed with:
 
 ```cmd
 tools\gen-vs2022-x64.cmd
 ```
 
-Debug:
-
-```cmd
-cmake --build --preset vs2022-x64-debug --parallel
-ctest --preset vs2022-x64-debug
-```
-
-Release:
-
-```cmd
-cmake --build --preset vs2022-x64-release --parallel
-ctest --preset vs2022-x64-release
-```
+Then run the repository's Debug and Release build/test presets.
 
 ### FOCUSED
 
-`FOCUSED` is an optimization for CTO-authorized batches, not a worker-selected shortcut.
+`FOCUSED` is a CTO-authorized optimization, not a worker-selected shortcut. It may be used only when the current feature specification provides exact build targets, tests, selectors, or commands. Focused validation must exercise the authorized scope in both Debug and Release configurations unless the specification explicitly says otherwise.
 
-It may be used only when the current CTO feature specification explicitly identifies the exact build targets and test scope,
-or supplies the exact commands.
-
-Focused validation must exercise the authorized scope in both Debug and Release configurations.
-
-If the focused scope is missing, ambiguous, or becomes insufficient because implementation changes broaden the affected area,
-use `FULL` or stop for CTO review as appropriate.
+If the focused scope is missing, ambiguous, or becomes insufficient because implementation broadens the affected surface, use `FULL` or stop for CTO review.
 
 Architectural barriers and cross-cutting infrastructure changes normally require `FULL`.
 
 ### Batch-final full validation
 
-When one or more features in a batch use `FOCUSED`, the final stack tip must normally receive one complete `FULL` Debug and
-Release validation before batch handoff.
+When any feature in a batch uses `FOCUSED`, the final stack tip normally receives one complete repository-level FULL Debug/Release validation before normal handoff. This preserves repository confidence while avoiding repeated full-suite execution after every small stacked feature.
 
-This preserves repository-level confidence while avoiding repeated full-suite execution after every small stacked feature.
+Cross-platform CI remains an independent later gate.
 
-GitHub CI remains an independent later cross-platform gate.
+## 8. Formatting validation
 
-## 10. Formatting validation
-
-The repository formatting scripts intentionally operate on files visible through `git ls-files`. When a feature creates
-new C/C++ files, make only those files visible before formatting:
+Formatting scripts operate on files visible through `git ls-files`. When a feature creates new C/C++ files, expose only those new files without staging their contents:
 
 ```cmd
 git add -N -- <each new C/C++ file created by this feature>
@@ -179,88 +85,61 @@ tools\format.cmd
 tools\format-check.cmd
 ```
 
-Do not use a broad `git add -N .` to discover new files.
+Do not use a broad `git add -N .` merely to make the formatter discover new files. Inspect the diff afterward because a formatter can legitimately change more text than expected.
 
-Formatting is part of local validation.
+## 9. Documentation-only changes
 
-Inspect the diff afterward because a formatter can legitimately change more text than expected.
+Documentation-only work does not automatically require full Debug/Release compilation unless the feature specification requires it, build/configuration commands changed, documentation is programmatically validated, or another applicable contract requires it.
 
-## 11. Documentation-only changes
+Still inspect diffs and verify paths/commands against the repository.
 
-A documentation-only feature does not automatically require full Debug/Release compilation unless:
+## 10. Failed validation
 
-- the feature specification requires it;
-- build commands or build configuration documentation changed;
-- documentation is generated/validated by a programmatic check;
-- another applicable `AGENTS.md` requires it.
-
-Still inspect the diff and verify links/paths/commands against the repository.
-
-## 12. Failed validation
-
-When a required local build or test fails:
+When required local validation fails:
 
 1. diagnose the failure;
-2. fix it if the fix is within the current feature scope;
+2. fix it if the fix is inside current scope;
 3. rerun the failed validation;
-4. rerun any validation whose result may have been invalidated by the fix.
+4. rerun any validation invalidated by the fix.
 
-Do not commit a feature as complete with known required local test failures.
+A failure already present on the clean authorized base is `BASELINE_VALIDATION_BLOCKED`, not a feature implementation failure. If resolving a failure requires architecture or unrelated scope expansion, stop and escalate.
 
-If the failure requires architectural scope expansion or unrelated changes, stop with `CTO REVIEW REQUIRED` or
-`ENVIRONMENT_BLOCKED` as appropriate.
+## 11. Never weaken the detector
 
-A failure already present on the clean authorized base before feature implementation is `BASELINE_VALIDATION_BLOCKED`, not a
-feature implementation failure.
+Do not obtain a pass by disabling/commenting tests, reducing assertions, suppressing sanitizers, lowering warning levels, changing compiler flags, excluding failing targets, adding unsafe casts merely to silence diagnostics, or reducing test scope without authorization.
 
-## 13. Never weaken the detector
+If a detector is actually wrong, report evidence and fix the detector under explicit scope.
 
-Do not obtain a passing result by:
+## 12. Regression fixes
 
-- disabling a test;
-- commenting out a test;
-- reducing assertions;
-- suppressing a sanitizer;
-- lowering warning levels;
-- changing compiler flags;
-- adding unsafe casts solely to silence diagnostics;
-- excluding a failing target;
-- reducing test scope without an approved reason.
+A bug fix should normally add a regression test that would fail for the defective behavior and pass for the correction. If a deterministic regression is impractical, record why.
 
-If a detector is actually wrong, escalate with evidence.
+## 13. Cross-platform limits
 
-## 14. Regression fixes
+Local validation proves only the local toolchain/configuration actually exercised. It does not silently prove GCC/Clang/AppleClang compatibility, Linux/macOS APIs, architecture variants, sanitizer cleanliness, exception/RTTI configurations, or another unexecuted matrix dimension.
 
-A bug fix should normally add a regression test that fails for the defective behavior and passes for the corrected behavior.
+Do not claim unexecuted environments are verified.
 
-If a regression test is impractical, record why in the handoff.
+## 14. Human-facing test runner output
 
-## 15. Cross-platform limits of local validation
+Test entry points such as `test.cmd`, `test.sh`, or equivalent repository-level runners are human-facing engineering tools. Their output quality is part of maintainability and operational reliability.
 
-Local VS2022 validation proves only the Windows configuration tested.
+Prefer a compact structured layout with stable status tags such as `[ RUN]`, `[WAIT]`, `[ OK ]`, and `[FAIL]`. Use color when the terminal supports it, while retaining a deterministic plain-text path for CI, redirected output, and explicit no-color operation.
 
-It does not prove:
+A runner should normally:
 
-- GCC compatibility;
-- Clang compatibility;
-- AppleClang compatibility;
-- Linux APIs;
-- macOS APIs;
-- x64/arm64 differences;
-- sanitizer cleanliness;
-- no-exception/no-RTTI configuration.
+- identify the repository/ref or exact HEAD when practical;
+- acknowledge suite start immediately;
+- show truthful suite/milestone progress during meaningful waits;
+- provide a concise final summary;
+- buffer noisy expected-failure subprocess output and print detailed logs only when the enclosing suite actually fails, unless verbose output was explicitly requested;
+- make unexpected failures visually obvious and include the evidence needed to diagnose them;
+- avoid fake percentages, fabricated ETA, decorative animation, or output that obscures the actual process state.
 
-Do not claim those are verified locally.
+For longer-running runners, emit a truthful heartbeat when a reasonable silent interval would otherwise make the process appear hung. Progress output must report real state, not invented progress.
 
-They remain responsibilities of later GitHub CI and CTO review.
+Where supported, provide explicit controls analogous to `QIVEN_TEST_VERBOSE=1` and `QIVEN_TEST_NO_COLOR=1` rather than forcing either maximum verbosity or ANSI output on every environment.
 
-## 16. Future incremental testing
+## 15. Future incremental validation
 
-The repository may later introduce CTest labels, affected-target analysis, caching, sharding, or other incremental CI
-mechanisms.
-
-The CTO-authorized `FOCUSED` validation profile is the only current mechanism for reducing per-feature local validation scope.
-
-Outside that explicit profile, do not invent per-feature shortcuts that skip required local tests.
-
-Optimization of test latency must preserve confidence, not merely reduce elapsed time.
+The repository may later add labels, affected-target analysis, caching, sharding, or other incremental mechanisms. Until such mechanisms are explicit and validated, `FOCUSED` is the only worker-level route for reducing per-feature validation scope. Test-latency optimization must preserve confidence rather than merely reduce elapsed time.

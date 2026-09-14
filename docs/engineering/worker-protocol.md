@@ -1,88 +1,30 @@
 # jason-worker Work Protocol
 
-This document defines the mechanical workflow for Work-mode implementation.
-
-The objective is high implementation throughput without granting Work mode release authority.
+This document defines the mechanical workflow for Work-mode implementation. The objective is high implementation throughput without granting Work mode architecture, merge, or release authority.
 
 ## 1. Roles
 
-`jason-brother`:
+`jason-brother` is CTO, architect, feature planner, reviewer, GitHub/CI reviewer, and merge/release gate.
 
-- CTO;
-- architect;
-- feature planner;
-- reviewer;
-- GitHub CI reviewer;
-- merge/release gate.
+`jason-worker` is the local implementation engineer, build/test executor, local feature-branch author, and structured handoff provider. jason-worker must not call itself jason-brother or use the `jason-brother/*` namespace.
 
-`jason-worker`:
+## 2. Remote and host boundary
 
-- implementation engineer;
-- local code/test/build executor;
-- local feature-branch author;
-- structured handoff provider.
+Unless the current task explicitly authorizes otherwise, Work performs local development only. Do not push, create PRs, merge to `main`, delete remote branches, force-push, rewrite remote history, or mutate unrelated repositories.
 
-jason-worker must not call itself jason-brother or use the `jason-brother/*` branch namespace.
+Do not change Git identity or global host configuration. Commits use the developer's existing configured identity.
 
-## 2. Remote boundary
+## 3. Branch naming and serial stacks
 
-Unless the current user instruction explicitly overrides this protocol, jason-worker performs local development only.
-
-Do not:
-
-- push;
-- fetch solely to publish work;
-- create PRs;
-- merge to `main`;
-- delete remote branches;
-- force-push;
-- rewrite remote history.
-
-Reading remote state when needed to understand the base is acceptable, but local `main` should normally already be prepared by
-the user before the batch begins.
-
-The normal handoff leaves completed local branches ready for the user to push later in Chat mode.
-
-## 3. Git identity
-
-Do not change:
-
-```text
-user.name
-user.email
-```
-
-Do not modify global or repository Git identity configuration.
-
-Commits use the developer's existing configured identity.
-
-Branch namespace identifies Work-mode origin.
-
-## 4. Branch naming
-
-Each feature branch is:
+Each feature branch is normally:
 
 ```text
 jason-worker/<feature-name>
 ```
 
-Use short lowercase kebab-case feature names.
+Use short lowercase kebab-case names unless the CTO specification provides an exact branch.
 
-Examples:
-
-```text
-jason-worker/owned-allocation
-jason-worker/checked-offset
-jason-worker/small-buffer
-```
-
-The CTO feature specification may provide the exact branch name. If so, use it.
-
-## 5. Serial stacked branches
-
-A Work batch is normally serial, not parallel.
-
-Example:
+A batch may intentionally form a serial stack:
 
 ```text
 main
@@ -94,117 +36,35 @@ main
              jason-worker/feature-c
 ```
 
-Feature B is created from completed Feature A when the authorized queue says B depends on A.
+Later branches may depend on earlier branches only when that order is explicitly authorized. Do not flatten an approved stack into one branch or create all dependent branches from `main`.
 
-Feature C is created from B, and so on.
+## 4. Completed layers are frozen
 
-Do not create all branches from `main` when later features depend on earlier work.
+After a feature is committed and work advances to the next authorized feature, treat the earlier layer as frozen for the current batch. If a later feature reveals a semantic or architectural defect in a frozen layer, stop and escalate rather than amending/rebasing several completed commits autonomously.
 
-Do not merge A into B; B naturally starts from A's commit.
+Minor repair of a frozen layer is allowed only when the current task explicitly authorizes the repair method.
 
-## 6. Completed layers are frozen
+## 5. Batch authorization and size
 
-After Feature A is committed and work begins on Feature B, treat A as frozen for the remainder of the batch.
+Implement only features listed in the authorized CTO queue. When the queue ends, stop even if time or usage remains. Never infer another feature from deferred notes or adjacent opportunities.
 
-If B reveals a defect in A:
+Ordinary batches are usually two or three features. Larger batches require explicit authorization and low risk. An architecturally risky change may intentionally be a batch of one.
 
-### Minor, unambiguous implementation issue
+## 6. Usage budget
 
-If the CTO feature specification explicitly authorizes stack repair, repair using the instructed method.
+Do not intentionally consume the entire Work allowance. Preserve enough capacity to understand the feature, implement it, validate it, repair normal defects, inspect the diff, commit coherently, run batch-final validation when required, and produce a truthful handoff.
 
-Otherwise stop and report it.
+If a reliable usage indicator exists, follow the CTO-defined budget or preserve a conservative reserve. If exact usage is not visible, do not fabricate a percentage. When a soft budget is reached, finish the current safe checkpoint and stop with `USAGE_BUDGET_SOFT_STOP`.
 
-### Semantic or architectural issue
+## 7. Architectural barriers
 
-Always stop.
+A feature is a likely architectural barrier when it materially changes public core types, ownership/failure semantics, allocator protocols, platform/compiler abstraction, ABI, exception/RTTI policy, CMake architecture, compiler flags, sanitizers, CI configuration, or another broad dependency boundary.
 
-Do not amend A, rebase the stack, or rewrite several completed commits autonomously.
+Unless the CTO explicitly says stacking may continue after that feature, complete it locally and stop for Chat/GitHub review before dependent work proceeds.
 
-Reason: later Chat/GitHub review must be able to understand exactly what Work produced.
+## 8. Starting a batch
 
-## 7. Batch authorization
-
-jason-worker may implement only features listed in the authorized CTO queue.
-
-Example:
-
-```text
-AUTHORIZED FEATURE QUEUE
-1. A
-2. B
-3. C
-STOP AFTER C
-```
-
-After C, stop even if there is available time or usage.
-
-Never infer Feature D.
-
-Never convert a deferred opportunity into a new branch.
-
-## 8. Batch size
-
-Default batch size is approximately 3 ordinary features.
-
-A CTO may authorize up to 5 low-risk features in one batch.
-
-Architecturally risky work may intentionally be a batch of one.
-
-Feature count is a safety boundary, not a productivity target.
-
-## 9. Usage budget
-
-Do not intentionally consume the entire Work allowance.
-
-When a reliable usage indicator is available, roughly one third of the available usage window is the normal soft budget for a
-batch unless the CTO specification defines a different limit.
-
-A lower CTO-specified limit takes precedence.
-
-Before beginning another feature, consider whether enough capacity remains to:
-
-- understand the feature;
-- implement it;
-- run its required validation profile;
-- repair normal defects;
-- format;
-- inspect the diff;
-- commit;
-- leave enough reserve for final batch validation and handoff.
-
-If not, do not begin it.
-
-When the soft budget is reached, finish the current coherent checkpoint and stop with:
-
-`USAGE_BUDGET_SOFT_STOP`
-
-If exact usage is not visible, do not fabricate a percentage. Rely on the finite feature queue and conservative batch size.
-
-## 10. Architectural barriers
-
-A feature is a likely architectural barrier when it materially changes:
-
-- platform detection;
-- compiler abstraction;
-- public core types;
-- allocator protocols;
-- ownership contracts broadly depended on;
-- exception policy;
-- RTTI policy;
-- ABI;
-- CMake architecture;
-- compiler flags;
-- sanitizers;
-- CI configuration.
-
-Unless the CTO explicitly states that stacking may continue after such a feature, complete that feature locally and stop the
-batch.
-
-The next step is Chat-mode push, GitHub CI, CTO review, and merge.
-
-## 11. Starting a batch
-
-Before creating or modifying any feature branch:
+Before creating/modifying a feature branch, verify:
 
 ```cmd
 git status
@@ -214,73 +74,44 @@ tools\format-check.cmd
 git diff --check
 ```
 
-Verify:
+Confirm the working tree is clean, the expected base is checked out, the expected commit is present, and baseline formatting/validation required by the specification passes.
 
-- the working tree is clean;
-- the expected base branch is checked out;
-- the expected base commit is present;
-- the repository formatting baseline passes;
-- no existing local diff is present.
+Read the root agent contract, engineering protocol, applicable architecture, and the complete authorized feature queue before implementing Feature A.
 
-Read all mandatory engineering documents from `AGENTS.md` once for the batch.
-
-Read the entire authorized feature queue before implementing Feature A so dependency order is understood.
-
-If `tools\format-check.cmd` fails on the clean authorized base before feature work begins, do not create a feature branch and do
-not repair unrelated files autonomously.
-
-Stop with:
-
-`BASELINE_VALIDATION_BLOCKED`
-
-Report the failing command and affected files.
-
-Do not classify a pre-existing formatting or validation defect as an architectural contradiction merely because it blocks the
-batch.
-
-Do not modify unrelated existing local work.
+If the clean authorized base already fails required validation, do not repair unrelated baseline state unless explicitly authorized. Stop with `BASELINE_VALIDATION_BLOCKED` and report the exact command/evidence.
 
 If the working tree contains user changes you did not create, stop rather than cleaning or overwriting them.
 
-## 12. Starting a feature
+## 9. Starting a feature
 
 For each feature:
 
 1. verify current branch/commit matches the specified base;
-2. create the specified branch;
-3. inspect relevant production code, tests, CMake registration, and architecture;
-4. restate the feature's required semantics internally before editing;
+2. create/switch to the specified branch;
+3. inspect relevant production code, tests, build registration, and architecture;
+4. restate required semantics internally before editing;
 5. identify stop conditions;
-6. implement only the feature.
+6. implement only the authorized feature.
 
 Do not begin by writing code before understanding existing contracts.
 
-## 13. During implementation
+## 10. During implementation
 
-Maintain a narrow diff.
+Maintain a narrow diff. Record adjacent improvement opportunities for later review rather than implementing them.
 
-When discovering an adjacent improvement:
+When ambiguity affects public semantics or architecture, stop. When it is a purely local implementation choice that preserves the approved contract, make the conservative engineering decision and record material assumptions for handoff.
 
-- do not implement it;
-- record it in handoff notes if useful.
+## 11. Required local validation
 
-When discovering a blocking ambiguity:
-
-- stop if it affects public semantics or architecture;
-- otherwise choose the most conservative local implementation consistent with existing contracts and record the assumption.
-
-## 14. Required local validation
-
-For every ordinary C++ feature, first make newly created C/C++ files visible to the tracked-file formatting scripts without
-staging their contents:
+For new C/C++ files, make only those files visible to tracked-file formatting scripts without staging contents:
 
 ```cmd
-git add -N -- <each new C/C++ file created by this feature>
+git add -N -- <new-file-1> <new-file-2>
 ```
 
-Name only the files created by the current feature. Do not use a broad `git add -N .`.
+Do not use broad `git add -N .`.
 
-Then always run:
+Every ordinary source feature runs:
 
 ```cmd
 tools\format.cmd
@@ -288,54 +119,29 @@ tools\format-check.cmd
 git diff --check
 ```
 
-### FULL validation
+### FULL
 
-`FULL` is the default profile.
+`FULL` is the default. Use the repository's normal configure/build/test workflow in Debug and Release.
 
-Run:
+For a standard generated C++ repository this normally begins with:
 
 ```cmd
 tools\gen-vs2022-x64.cmd
-cmake --build --preset vs2022-x64-debug --parallel
-ctest --preset vs2022-x64-debug
-cmake --build --preset vs2022-x64-release --parallel
-ctest --preset vs2022-x64-release
 ```
 
-### FOCUSED validation
+followed by the repository Debug/Release build and test presets.
 
-`FOCUSED` may be used only when the CTO feature specification explicitly selects it and provides exact build targets, tests,
-selectors, or commands.
+### FOCUSED
 
-Run the authorized focused validation in both Debug and Release configurations.
+`FOCUSED` may be used only when the CTO feature specification supplies exact build targets, tests, selectors, or commands. Do not infer reduced scope because a feature appears small. If focused scope is ambiguous or becomes insufficient, use `FULL` or stop for CTO review.
 
-Do not infer that a target or test is irrelevant merely because it appears unrelated.
-
-If the CTO specification says `FOCUSED` but does not define a sufficiently precise validation scope, fall back to `FULL`
-rather than guessing.
-
-Architectural barriers and cross-cutting infrastructure work use `FULL` unless explicitly overridden.
+Cross-cutting infrastructure and architecture changes normally use `FULL`.
 
 ### Batch-final validation
 
-Before normal completion of the authorized queue, the final stack tip must pass:
+Before normal completion of a batch that used focused validation, the final stack tip normally receives one complete repository-level FULL Debug/Release validation. If the batch stops early, report whether batch-final validation ran rather than pretending it passed.
 
-```cmd
-tools\format-check.cmd
-cmake --build --preset vs2022-x64-debug --parallel
-ctest --preset vs2022-x64-debug
-cmake --build --preset vs2022-x64-release --parallel
-ctest --preset vs2022-x64-release
-```
-
-This batch-final full validation supplements feature-level focused validation; it does not replace semantic feature tests.
-
-If the batch stops early for an unrelated blocker before normal completion, report whether batch-final validation was run
-rather than pretending it passed.
-
-If only documentation changes, follow the documentation-only rule in `testing-standard.md`.
-
-## 15. Diff inspection
+## 12. Diff inspection
 
 Before commit:
 
@@ -345,38 +151,11 @@ git diff --check
 git diff
 ```
 
-Inspect every changed file.
+Inspect every changed file for unrelated formatting, temporary output, debug code, abandoned experiments, generated artifacts, local paths, accidental build changes, or unrelated source edits. Tests do not replace diff review.
 
-Look specifically for:
+## 13. Commit
 
-- unrelated formatting;
-- temporary output;
-- debug code;
-- abandoned experiments;
-- generated artifacts;
-- local machine paths;
-- accidental CMake changes;
-- unrelated source edits.
-
-Do not rely on tests to detect scope pollution.
-
-## 16. Commit
-
-A feature should normally end as one coherent commit relative to its approved parent.
-
-Commit message style should describe the semantic change.
-
-Examples:
-
-```text
-feat(memory): add OwnedAllocation
-feat: add checked integer cast
-fix(memory): preserve allocator provenance on move
-```
-
-Do not alter Git identity.
-
-Do not amend a frozen earlier feature.
+A feature should normally end as one coherent commit relative to its approved parent. Use a semantic commit message. Do not alter Git identity or amend a frozen earlier feature.
 
 After commit:
 
@@ -385,65 +164,27 @@ git status
 git log -1 --oneline
 ```
 
-The working tree should be clean.
+The working tree should be clean before moving to the next feature.
 
-## 17. Proceeding to the next feature
+## 14. Proceeding to the next feature
 
-Continue only if all are true:
-
-- current feature is committed;
-- the feature's required validation profile passed;
-- working tree is clean;
-- no architectural review is pending;
-- next feature is explicitly in the authorized queue;
-- the current feature is not an unapproved barrier;
-- usage budget is sufficient for a coherent next feature.
+Continue only if the current feature is committed, required validation passed, the tree is clean, no architectural review is pending, the next feature is explicitly authorized, the current feature is not an unapproved barrier, and enough budget remains for a coherent next feature.
 
 Otherwise stop.
 
-## 18. Failure handling
+## 15. Failure classification
 
-### Baseline validation failure
+- Clean base already fails required validation: `BASELINE_VALIDATION_BLOCKED`.
+- In-scope implementation/test failure: diagnose, fix, rerun affected validation.
+- Failure requires architecture or unrelated scope: `CTO REVIEW REQUIRED` / `ARCHITECTURAL_REVIEW_REQUIRED`.
+- Toolchain/environment problem requiring global host mutation or unavailable local resources: `ENVIRONMENT_BLOCKED`.
+- Soft usage budget reached at a coherent checkpoint: `USAGE_BUDGET_SOFT_STOP`.
 
-If the clean authorized base fails repository validation before feature implementation begins:
+Do not weaken a detector or broaden scope merely to make the batch continue.
 
-`BASELINE_VALIDATION_BLOCKED`
+## 16. Blocker format
 
-Do not repair unrelated baseline files unless the CTO explicitly authorizes a maintenance scope.
-
-### Local implementation/test failure inside scope
-
-Diagnose, fix, rerun validation, continue.
-
-### Failure requires scope expansion
-
-Stop:
-
-`CTO REVIEW REQUIRED`
-
-### Toolchain/environment failure
-
-Do not mutate the host globally to repair it.
-
-Stop:
-
-`ENVIRONMENT_BLOCKED`
-
-Include the exact failing command and relevant error.
-
-### Architectural contradiction
-
-Stop immediately:
-
-`ARCHITECTURAL_REVIEW_REQUIRED`
-
-Do not “finish the rest of the batch first.”
-
-## 19. Handoff format
-
-Do not emit the complete handoff after each successful feature while the batch is still continuing.
-
-For a mid-batch blocker, return only:
+For a mid-batch blocker, return a concise report:
 
 ```text
 JASON-WORKER BLOCKER
@@ -456,9 +197,11 @@ Evidence:
 User/CTO action required:
 ```
 
-The complete handoff below is reserved for actual batch termination.
+Do not repeat the complete batch history in every blocker.
 
-At the end of the batch, return a report in this structure:
+## 17. Final handoff
+
+At actual batch termination, return:
 
 ```text
 JASON-WORKER HANDOFF
@@ -491,8 +234,7 @@ Batch-final validation:
 <FULL PASS | NOT RUN | WAIVED BY CTO>
 
 Batch stop reason:
-<AUTHORIZED_QUEUE_COMPLETED | ARCHITECTURAL_REVIEW_REQUIRED | BASELINE_VALIDATION_BLOCKED |
- LOCAL_TEST_FAILURE | ENVIRONMENT_BLOCKED | USAGE_BUDGET_SOFT_STOP>
+<AUTHORIZED_QUEUE_COMPLETED | ARCHITECTURAL_REVIEW_REQUIRED | BASELINE_VALIDATION_BLOCKED | LOCAL_TEST_FAILURE | ENVIRONMENT_BLOCKED | USAGE_BUDGET_SOFT_STOP>
 
 Local branches created:
 - ...
@@ -504,22 +246,10 @@ Final working tree:
 CLEAN
 ```
 
-Do not claim `NONE`, `PASS`, or `CLEAN` unless verified.
+Never claim `PASS`, `NONE`, or `CLEAN` unless verified.
 
-## 20. Chat-mode consumption
+## 18. Chat-mode consumption
 
-After Work stops, the user returns to Chat mode.
+After Work stops, the user returns to Chat. jason-brother reviews exact commits/diffs, relevant CI, architecture, and tests. Work-mode local success does not pre-approve later stacked branches or authorize merge.
 
-The expected review flow is feature-by-feature:
-
-1. user pushes the first local `jason-worker/*` branch;
-2. GitHub CI runs according to repository policy;
-3. jason-brother inspects commit, diff, architecture, tests, and CI;
-4. user merges after approval;
-5. user pushes the next stacked branch;
-6. repeat.
-
-Work mode does not pre-approve later branches merely because their local tests passed.
-
-If an early branch needs correction during Chat review, later stacked branches may need restacking. That repair is a new
-explicit task, not something jason-worker should have predicted by rewriting history in advance.
+If an early branch needs correction during Chat review, later stacked work may need explicit restacking. That repair is a new authorized task, not permission for the worker to rewrite history preemptively.
