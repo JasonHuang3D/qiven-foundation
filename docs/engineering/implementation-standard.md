@@ -1,331 +1,95 @@
-# Qiven Foundation Implementation Standard
+# Implementation Standard
 
-This document defines implementation quality expected from `jason-worker`.
-
-Read it together with the root `AGENTS.md` and `docs/architecture/foundation.md`.
+This document defines implementation quality expected from `jason-worker`. Read it with the root `AGENTS.md`, the current CTO feature specification, and applicable repository architecture.
 
 ## 1. Engineering objective
 
-Implementation should optimize for correctness and durable simplicity, not for maximum code production.
-
-Foundation code should make important properties visible:
-
-- who owns a resource;
-- how long it lives;
-- how failure is represented;
-- what work an operation performs;
-- whether allocation occurs;
-- whether synchronization occurs;
-- which platform boundary is crossed;
-- which invariants callers must satisfy.
+Optimize for correctness and durable simplicity, not maximum code production. Important properties should be visible: ownership, lifetime, failure behavior, runtime cost, allocation, synchronization, platform boundaries, and invariants.
 
 Do not hide meaningful cost or failure behind convenience APIs.
 
 ## 2. Scope discipline
 
-The CTO feature specification defines the permitted change surface.
+The CTO feature specification defines the permitted change surface. Before editing, identify required behavior, allowed public contract changes, expected modules/files, explicit out-of-scope work, stop conditions, and validation profile.
 
-Before editing, identify:
-
-- required new behavior;
-- permitted public contract changes;
-- expected files or modules;
-- explicit out-of-scope work;
-- stop conditions.
-
-While implementing, distinguish:
-
-- work required for correctness;
-- work required for tests/build registration;
-- unrelated improvement opportunities.
-
-Only the first two belong in the feature branch.
-
-If an unrelated defect blocks the feature, report it. Do not silently broaden scope.
+Distinguish work required for correctness/integration from unrelated improvement opportunities. If an unrelated defect blocks the feature, report it; do not silently broaden scope.
 
 ## 3. Minimal sufficient abstraction
 
-Prefer the smallest abstraction that fully expresses the required semantics.
+Prefer the smallest abstraction that completely expresses the required semantics. Do not build generalized infrastructure for hypothetical future needs.
 
-Do not build generalized infrastructure for possible future needs.
-
-Avoid speculative:
-
-- registries;
-- plugin systems;
-- generic factories;
-- reflection systems;
-- serialization layers;
-- custom containers;
-- error frameworks;
-- portability wrappers;
-- traits frameworks;
-- allocator hierarchies.
-
-A future extension point should exist only when the current architecture genuinely requires it.
+Registries, plugin systems, generic factories, reflection, serialization frameworks, custom containers, portability wrappers, traits frameworks, or allocator hierarchies require concrete justification.
 
 ## 4. API quality
 
-Public APIs should be:
+Public APIs should be small, explicit, difficult to misuse, clear about ownership/lifetime/failure, predictable in cost, and portable unless intentionally platform-specific.
 
-- small;
-- explicit;
-- difficult to misuse accidentally;
-- clear about ownership and lifetime;
-- clear about failure;
-- predictable in cost;
-- portable across supported targets unless intentionally platform-specific.
-
-Do not add convenience overloads without a concrete need.
-
-Avoid Boolean parameters when they obscure meaning.
-
-Avoid public implementation details.
-
-If naming or API shape materially changes the contract and the feature spec did not decide it, request CTO review.
+Avoid convenience overloads without concrete need, Boolean parameters that obscure meaning, and public implementation details. If public naming or API shape materially changes the contract and the feature specification did not decide it, request CTO review.
 
 ## 5. Ownership and lifetime
 
-For every pointer, reference, span, allocator handle, or resource-owning object, know whether it is:
+For every pointer, reference, span, handle, allocator/backend reference, and resource owner, know whether it is owning, borrowing, nullable, empty-but-valid, lifetime-bound, or required to outlive another object.
 
-- owning;
-- borrowing;
-- nullable;
-- empty-but-valid;
-- lifetime-bound to another object;
-- required to outlive another object.
+Move-only ownership types require deliberate handling of moved-from state, destination cleanup, provenance, self-move when relevant, destruction after move, and valid empty states.
 
-Move-only ownership types require deliberate handling of:
+Raw storage ownership and C++ object lifetime are separate responsibilities. Do not silently construct/destroy typed objects inside a raw-storage abstraction unless the contract explicitly owns object lifetime.
 
-- moved-from state;
-- destination cleanup before move assignment;
-- allocator/backend provenance;
-- self-move when relevant;
-- destruction after move;
-- zero-size/empty success.
+## 6. Arithmetic, ranges, and conversion safety
 
-Do not rely on implicit conventions that are not expressed by type or documented contract.
+Code handling byte sizes, offsets, counts, alignments, ranges, indices, or address arithmetic must reason about overflow, underflow, narrowing, sign changes, invalid alignment, and pointer-width versus fixed-width values.
 
-## 6. Raw storage versus objects
+Use established checked primitives when they fit. Do not cast solely to silence a warning. If arithmetic failure semantics are not defined, do not invent them locally.
 
-Raw allocation and C++ object lifetime are separate responsibilities.
+## 7. Error and contract handling
 
-An allocator or raw storage owner must not silently construct or destroy typed objects unless its contract explicitly owns object
-lifetime.
+Do not conflate caller programming errors, invariant violations, recoverable runtime failures, and environmental failures. Assertions are not substitutes for recoverable error channels.
 
-When typed construction is later required, design that feature separately rather than smuggling object lifetime into a raw
-storage abstraction.
+Do not swallow failures, convert them into silent defaults, invent ambiguous sentinels, or introduce exceptions into a non-throwing contract. If failure category/channel affects the public contract and is unclear, escalate.
 
-## 7. Integer and size safety
+Use `noexcept` only when the full implementation can uphold it as a real semantic guarantee.
 
-Code that handles byte sizes, offsets, counts, alignments, ranges, or address arithmetic must reason about:
+## 8. Standard library and generic code
 
-- overflow;
-- underflow;
-- narrowing;
-- signed/unsigned conversion;
-- invalid alignment;
-- addition/multiplication overflow;
-- pointer-sized versus fixed-width integers.
+Use the standard library when it provides the required semantics without unacceptable hidden cost or dependency impact. Do not reimplement standard functionality for style, but do not choose a high-level abstraction that violates allocation, ownership, exception, RTTI, or runtime-cost constraints.
 
-Prefer existing checked primitives in the repository where appropriate.
+Templates, concepts, type erasure, inheritance, and metaprogramming must earn their complexity. A single feature should not create a framework for hypothetical future types.
 
-Do not use a cast solely to silence a compiler warning.
+## 9. Platform boundaries
 
-If arithmetic failure semantics are not defined, do not invent them locally.
+Portable code should remain platform-neutral. Platform-specific branches should be narrow and explicit. Prefer the least invasive native dependency and keep native headers out of public APIs unless exposure is an intentional contract.
 
-## 8. Error and contract handling
+Do not assume Windows behavior proves Linux/macOS behavior, or vice versa. Verify documented semantics where platform equivalence matters.
 
-Use repository contract mechanisms consistently.
+## 10. Public headers and includes
 
-Do not conflate:
+Public headers must be self-contained according to repository policy. Include what they directly require; do not rely on accidental transitive includes. Avoid heavy implementation dependencies and platform leakage.
 
-- caller programming errors;
-- internal invariant violations;
-- recoverable runtime failures;
-- environmental failures.
+When a new public header is added, update the repository's header-check/build registration when required by existing convention.
 
-Assertions are not substitutes for recoverable error channels.
+## 11. Naming, comments, and formatting
 
-Do not add exceptions to APIs whose semantics are non-throwing.
+Follow established naming unless the feature specification deliberately changes it. Names should communicate semantics, not implementation history.
 
-Do not convert an error to a default value merely to simplify callers.
+Comments are for non-obvious intent, invariants, platform quirks, ownership/lifetime constraints, or important trade-offs. Do not narrate syntax or write tutorial essays in source files.
 
-## 9. `noexcept`
+Repository `.clang-format` is authoritative. Use `tools\format.cmd` and `tools\format-check.cmd`, then inspect the actual diff. Never modify formatting policy as a side effect of an unrelated feature.
 
-Apply `noexcept` when it is a real semantic guarantee.
+## 12. Build configuration
 
-Do not add it decoratively.
+CMake is the build-system source of truth for the generated C++ library template. Do not hand-maintain divergent IDE configuration when CMake should express the setting. Use existing targets, presets, and conventions; do not restructure top-level build architecture for aesthetics during unrelated work.
 
-For resource cleanup and move operations, reason about whether the entire implementation can actually uphold the guarantee.
+## 13. Performance and concurrency
 
-Do not call potentially throwing operations from a `noexcept` function unless termination is intentionally part of the contract.
+When performance materially affects design, identify the cost being controlled. Prefer predictable complexity, avoid hidden allocation, virtual dispatch, and synchronization unless required, and keep hot-path work explicit.
 
-## 10. Standard library use
+Thread-safety is part of the contract. Do not add locks "just in case". If correctness requires a new concurrency contract, stop for CTO review.
 
-Use the standard library where it provides the required semantics without unacceptable cost or dependency impact.
+## 14. Diff quality
 
-Do not reimplement standard functionality for style.
-
-Conversely, do not choose a high-level STL abstraction if it introduces hidden allocation, ownership, exception, RTTI, or
-runtime cost contrary to the feature's contract.
-
-## 11. Templates and generic code
-
-Generic programming must earn its complexity.
-
-Before adding a template/concept/type-erased abstraction, verify that:
-
-- more than one real use case exists or the public contract intrinsically requires genericity;
-- error messages and compile cost remain reasonable;
-- semantics remain understandable;
-- the abstraction does not expose implementation machinery unnecessarily.
-
-A single feature should not create a framework for hypothetical future types.
-
-## 12. Platform boundaries
-
-Portable code should remain platform-neutral.
-
-Platform-specific branches should be narrow and explicit.
-
-Prefer the least invasive native dependency. For example, do not include `windows.h` when a narrower runtime or CRT facility is
-sufficient.
-
-When `windows.h` is unavoidable:
-
-- keep it out of public headers;
-- isolate it to Windows implementation code;
-- use the established defensive macro policy from the repository rather than inventing local variants;
-- prevent common macro pollution;
-- keep include order deliberate.
-
-Do not assume Linux/macOS equivalents without verifying their documented semantics.
-
-## 13. Public headers
-
-Public headers must:
-
-- include what they directly need;
-- avoid accidental transitive dependencies;
-- avoid platform header leakage;
-- avoid unnecessary implementation detail;
-- remain compatible with the repository header-check target.
-
-If a new public header is added, register it consistently in CMake and header checks.
-
-## 14. Includes
-
-Keep include lists minimal but explicit.
-
-Do not remove an include merely because another header currently provides it transitively.
-
-Do not add broad umbrella headers for convenience.
-
-Respect repository formatting/include ordering.
-
-## 15. Comments
-
-Write comments for reasoning that is not obvious from code:
-
-- why a platform workaround exists;
-- why an invariant is safe;
-- why an apparently simpler approach is incorrect;
-- subtle ownership/lifetime constraints;
-- non-obvious performance or ABI trade-offs.
-
-Do not write comments that restate syntax.
-
-Avoid long tutorial comments inside implementation files.
-
-If a rule requires a paragraph to understand, architecture or engineering documentation may be a better location.
-
-## 16. Naming
-
-Follow existing repository naming conventions unless the feature specification deliberately changes them.
-
-Names should communicate semantics rather than implementation history.
-
-Avoid abbreviations that save little space and lose meaning.
-
-Do not rename unrelated existing APIs for consistency during another feature.
-
-## 17. Formatting
-
-Repository `.clang-format` is authoritative.
-
-For source changes use:
-
-```cmd
-tools\format.cmd
-tools\format-check.cmd
-```
-
-After formatting, inspect the actual diff. Formatting success does not prove that unrelated files were not changed.
-
-Never modify `.clang-format` as a side effect of implementing another feature.
-
-## 18. Build configuration
-
-CMake is the build-system source of truth.
-
-Do not hand-maintain divergent Visual Studio configuration when CMake should express the setting.
-
-Use existing targets, presets, helper functions, and folder conventions.
-
-Do not restructure CMake for aesthetic reasons while implementing an unrelated feature.
-
-## 19. Performance
-
-Foundation is performance-sensitive, but premature optimization is not permission for opaque code.
-
-When performance materially affects design:
-
-- identify the cost being controlled;
-- prefer predictable complexity;
-- avoid hidden allocation;
-- avoid unnecessary virtual dispatch;
-- avoid unnecessary synchronization;
-- keep hot-path work explicit.
-
-Do not add micro-optimizations without evidence when they harm clarity or portability.
-
-## 20. Concurrency
-
-Do not make a type thread-safe accidentally or implicitly.
-
-Thread-safety is part of the contract.
-
-If the feature specification does not require synchronization, do not add locks “just in case.”
-
-If correctness requires a new concurrency contract, stop for CTO review.
-
-## 21. Diff quality
-
-Before committing, inspect the full diff and remove:
-
-- temporary diagnostics;
-- debug output;
-- commented-out experiments;
-- unrelated format churn;
-- editor-generated changes;
-- accidental file renames;
-- local paths;
-- generated build products;
-- speculative TODO implementations.
+Before commit, inspect the full diff and remove temporary diagnostics, debug output, commented experiments, unrelated formatting, generated build products, local paths, accidental renames, and speculative TODO implementations.
 
 A feature diff should tell one coherent story.
 
-## 22. Done means understood
+## 15. Done means understood
 
-Do not consider a feature complete merely because it compiles.
-
-Before handoff, be able to explain:
-
-- the invariant;
-- ownership/lifetime behavior;
-- failure behavior;
-- meaningful edge cases;
-- what was tested;
-- what Windows-local testing could not prove;
-- why the implementation stays inside the architecture.
+Do not consider a feature complete merely because it compiles. Before handoff, be able to explain the invariant, ownership/lifetime behavior, failure behavior, meaningful edge cases, what was tested, what local validation could not prove, and why the implementation stays inside architecture and scope.

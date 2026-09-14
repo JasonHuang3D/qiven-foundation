@@ -52,19 +52,17 @@ if errorlevel 1 goto :error_changed
 del /q "%PATCH%"
 
 popd
-echo [Qiven] Patch applied successfully.
+echo [Qiven] Patch applied successfully to qiven-foundation.
 exit /b 0
 
 :error
 popd
 echo.
 echo [Qiven] Patch was not applied.
-pause
 exit /b 1
 
 :error_changed
 popd
 echo.
 echo [Qiven] Working tree changed; inspect git diff before continuing.
-pause
 exit /b 1

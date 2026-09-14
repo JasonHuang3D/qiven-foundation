@@ -1,32 +1,25 @@
-# Qiven Foundation Engineering Protocol
+# qiven-foundation Engineering Protocol
 
-This directory contains the repository-level engineering protocol used by `jason-worker` and by humans reviewing Work-mode
-implementation.
+This directory contains the shared repository-level engineering protocol used by `jason-worker` and by humans reviewing Work-mode implementation.
 
-The architecture of Qiven Foundation remains defined by `docs/architecture/foundation.md`. These documents do not replace
-that architecture; they define how implementation work is performed safely and consistently.
+Repository architecture remains repository-owned. These documents define **how** implementation work is performed safely and consistently; they do not replace domain or architectural contracts.
 
 ## Documents
 
-- `implementation-standard.md` — implementation quality, scope discipline, C++ and platform rules.
-- `testing-standard.md` — semantic test design and required local validation.
-- `worker-protocol.md` — Work-mode branch, batch, commit, validation, stopping, and handoff procedure.
-- `feature-spec.md` — contract used by `jason-brother` to assign implementation work to `jason-worker`.
+- `implementation-standard.md` — implementation quality, scope discipline, C++ design, dependency, portability, and review rules.
+- `testing-standard.md` — semantic test design, validation profiles, and local evidence requirements.
+- `worker-protocol.md` — Work-mode branch, batch, commit, validation, stopping, blocker, and handoff procedure.
+- `feature-spec.md` — contract used by `jason-brother` to assign implementation-ready work to `jason-worker`.
 
 ## Roles
 
 ### jason-brother
 
-CTO, architect, reviewer, feature planner, GitHub CI reviewer, and release gate.
-
-The CTO decides what should be built and whether it is accepted.
+CTO, architect, reviewer, feature planner, GitHub/CI reviewer, and merge/release gate. The CTO decides what should be built, the architectural contract, the feature order, and whether a result is accepted.
 
 ### jason-worker
 
-Work-mode implementation engineer.
-
-The worker converts approved feature specifications into high-quality local code, tests, and commits. The worker does not push
-or merge by default and does not independently expand architecture.
+Work-mode implementation engineer. The worker converts approved feature specifications into high-quality local code, tests, and coherent commits. It does not push or merge by default and does not independently expand architecture.
 
 ## Normal flow
 
@@ -42,40 +35,29 @@ Work / jason-worker
     feature B -> local validation -> local commit
         |
         v
-    feature C -> local validation -> local commit
-        |
-        v
-    STOP + handoff
+    STOP + structured handoff
             |
             v
 Chat / jason-brother + user
-    push A -> GitHub CI -> review -> merge
-    push B -> GitHub CI -> review -> merge
-    push C -> GitHub CI -> review -> merge
+    remote review -> CI as required -> merge/release gate
 ```
 
-The Work batch is intentionally local. This keeps high-throughput implementation separate from cross-platform validation and
-release authority.
+The Work batch is intentionally local. This separates high-throughput implementation from cross-platform validation and release authority.
 
 ## Instruction precedence
 
-If documents appear to conflict, use the precedence defined by the root `AGENTS.md`.
+Use the precedence defined by the root `AGENTS.md`. A feature specification may specialize ordinary implementation details for one feature, but it may not silently override repository-wide architecture or safety rules. Deliberate exceptions must be explicit.
 
-A feature specification may specialize ordinary implementation details for one feature. It may not silently override
-repository-wide architectural or safety rules. Any deliberate exception should be explicit.
+## Protocol evolution
 
-## Updating this protocol
+These documents are expected to evolve when evidence shows that the existing protocol failed to prevent a recurring class of mistake.
 
-These documents are expected to evolve.
-
-When jason-worker produces a class of mistake that the existing protocol should reasonably have prevented, review both the code
-and the protocol:
+When a process failure occurs, ask:
 
 1. Was the feature specification ambiguous?
-2. Was a repository rule missing?
+2. Was a shared engineering rule missing?
 3. Was the rule present but too vague to be operational?
-4. Was the rule contradicted by another instruction?
+4. Was it contradicted by another instruction?
 5. Should the rule become an automated check instead of prose?
 
-Fix the underlying protocol when appropriate rather than relying on the same warning being remembered manually in future
-sessions.
+Fix the underlying protocol or detector when appropriate rather than relying on the same warning being remembered manually in future sessions.
