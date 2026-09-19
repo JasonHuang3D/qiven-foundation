@@ -99,6 +99,20 @@ void break_if_debugger_attached() noexcept
     write_stderr(message, message_size(result));
     write_debugger(message);
     break_if_debugger_attached();
+
+#if QIVEN_PLATFORM_WINDOWS
+    // Terminate without invoking the CRT's abort() report: the MSVC abort path
+    // raises a modal "abort() has been called" dialog that pauses the process
+    // for human input and terminates on EVERY button (its Ignore affordance
+    // does not continue). A contract violation in an unattended run (CI, ctest,
+    // scheduled automation) must fail closed to stderr + a fast silent exit,
+    // never wait for a click. (2026-09-19 incident: a Debug ctest gate appeared
+    // to hang for seconds at a time; the pauses were operator click latency on
+    // this dialog for an uncaught-exception terminate, not a QIVEN_ASSERT.)
+    // DebugBreak above still stops interactive sessions dead at the site.
+    std::_Exit(3);
+#else
     std::abort();
+#endif
 }
 } // namespace qiven::detail
