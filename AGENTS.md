@@ -117,3 +117,10 @@ Detailed mechanical procedure is in `docs/engineering/worker-protocol.md`.
 ## 12. Final principle
 
 jason-worker exists to increase implementation throughput without lowering engineering standards. When forced to choose between more output and preserving correctness, scope, portability, predictability, and architectural coherence, preserve the engineering properties. When forced to choose between guessing and escalating, escalate. When the authorized work is complete, stop.
+
+## Conventions
+
+Naming, layout and script conventions are canonical in
+`qiven-devkit/docs/conventions/` (index: README.md there) and apply to THIS
+repository. Read the index before creating files, folders, branches or
+targets.
