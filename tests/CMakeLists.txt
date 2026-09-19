@@ -27,6 +27,12 @@ qiven_enable_test_warnings(qiven-foundation-error)
 set_target_properties(qiven-foundation-error PROPERTIES CXX_EXTENSIONS OFF FOLDER "Tests")
 add_test(NAME qiven-foundation.error COMMAND qiven-foundation-error)
 
+add_executable(qiven-foundation-memory-observer-stress memory_observer_stress.cpp)
+target_link_libraries(qiven-foundation-memory-observer-stress PRIVATE qiven::foundation)
+qiven_enable_test_warnings(qiven-foundation-memory-observer-stress)
+set_target_properties(qiven-foundation-memory-observer-stress PROPERTIES CXX_EXTENSIONS OFF FOLDER "Tests")
+add_test(NAME qiven-foundation.memory-observer-stress COMMAND qiven-foundation-memory-observer-stress)
+
 add_executable(qiven-foundation-memory-observer memory_observer.cpp)
 target_link_libraries(qiven-foundation-memory-observer PRIVATE qiven::foundation)
 qiven_enable_test_warnings(qiven-foundation-memory-observer)

@@ -50,12 +50,15 @@ public:
     {
 #if QIVEN_ENABLE_MEMORY_OBSERVER
         total_allocations_.fetch_add(1, std::memory_order_relaxed);
-        const usize new_bytes = total_bytes_allocated_.fetch_add(size, std::memory_order_relaxed) + size;
-        current_usage_.fetch_add(size, std::memory_order_relaxed);
+        total_bytes_allocated_.fetch_add(size, std::memory_order_relaxed);
+        // peak tracks CURRENT USAGE, not cumulative bytes (bug found by stress test:
+        // the old code used total_bytes_allocated which is monotonically increasing
+        // and never reflects deallocations, making the peak permanently wrong)
+        const usize new_usage = current_usage_.fetch_add(size, std::memory_order_relaxed) + size;
 
         // high-water mark: relaxed CAS loop
         usize current_peak = peak_usage_.load(std::memory_order_relaxed);
-        while (new_bytes > current_peak && !peak_usage_.compare_exchange_weak(current_peak, new_bytes, std::memory_order_relaxed))
+        while (new_usage > current_peak && !peak_usage_.compare_exchange_weak(current_peak, new_usage, std::memory_order_relaxed))
         {
         }
 #else
