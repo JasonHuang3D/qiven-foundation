@@ -42,13 +42,20 @@ cause: the draft's preflight (its AGENTS.md §2) surveys the draft's own
 contracts but did not survey Foundation's public surface before writing
 byte-level code.
 
-**Action (draft side, after F1 lands):** migrate `serializeImpl` /
-`deserializeImpl` onto `qiven::ByteCursor`, `qiven::ByteWriter` and
-`qiven::endian`; delete the local `Reader`/`put*`; keep the domain-typed
-`DeserializeError` taxonomy as a composition over Foundation's optional-based
-reads. Acceptance: the serialization golden vectors are byte-IDENTICAL before
-and after (the wire format does not change), and the full pit suite stays
-green in Debug and Release.
+**Action (draft side, after F1 lands):** migrate the READ path onto
+`qiven::ByteCursor` + `qiven::endian` and delete the duplicated bounds
+machinery; keep the domain-typed `DeserializeError` taxonomy as a composition
+over Foundation's optional-based reads. Acceptance: the serialization golden
+vectors are byte-IDENTICAL before and after (the wire format does not change),
+and the full pit suite stays green in Debug and Release.
+
+**Migration outcome (2026-09-20, same day):** the read path migrated; the
+golden digest is byte-identical (`snap-ae811bad8dada212`); the full pit suite
+is green. The WRITE path keeps the draft's small growing-buffer put* helpers
+with a recorded rationale: `qiven::ByteWriter` targets FIXED-capacity spans,
+while the draft serializer writes an unbounded growing buffer - composing the
+writer strategy is a serialization-strategy decision the kernel's K1 batch
+owns. `fnv1a64`/hex now come from Foundation hashing (F1).
 
 **Action (process, draft side):** record pit P-49 "draft reimplemented a
 lower-layer capability" — the preflight must include a Foundation-surface

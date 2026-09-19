@@ -21,6 +21,21 @@ set_target_properties(
 
 add_test(NAME qiven-foundation.smoke COMMAND qiven-foundation-smoke)
 
+add_executable(qiven-foundation-hashing hashing.cpp)
+
+target_link_libraries(qiven-foundation-hashing PRIVATE qiven::foundation)
+qiven_enable_test_warnings(qiven-foundation-hashing)
+
+set_target_properties(
+    qiven-foundation-hashing
+    PROPERTIES
+        CXX_EXTENSIONS OFF
+        FOLDER "Tests"
+        VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+)
+
+add_test(NAME qiven-foundation.hashing COMMAND qiven-foundation-hashing)
+
 add_executable(qiven-foundation-platform-primitives platform_primitives.cpp)
 
 target_link_libraries(qiven-foundation-platform-primitives PRIVATE qiven::foundation)
@@ -269,6 +284,7 @@ add_library(
         headers/architecture.cpp
         headers/byte_cursor.cpp
         headers/byte_writer.cpp
+        headers/hashing.cpp
         headers/checked_arithmetic.cpp
         headers/checked_integer_cast.cpp
         headers/checked_span.cpp
