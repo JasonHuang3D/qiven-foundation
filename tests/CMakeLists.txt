@@ -21,6 +21,18 @@ set_target_properties(
 
 add_test(NAME qiven-foundation.smoke COMMAND qiven-foundation-smoke)
 
+add_executable(qiven-foundation-error error.cpp)
+target_link_libraries(qiven-foundation-error PRIVATE qiven::foundation)
+qiven_enable_test_warnings(qiven-foundation-error)
+set_target_properties(qiven-foundation-error PROPERTIES CXX_EXTENSIONS OFF FOLDER "Tests")
+add_test(NAME qiven-foundation.error COMMAND qiven-foundation-error)
+
+add_executable(qiven-foundation-memory-observer memory_observer.cpp)
+target_link_libraries(qiven-foundation-memory-observer PRIVATE qiven::foundation)
+qiven_enable_test_warnings(qiven-foundation-memory-observer)
+set_target_properties(qiven-foundation-memory-observer PROPERTIES CXX_EXTENSIONS OFF FOLDER "Tests")
+add_test(NAME qiven-foundation.memory-observer COMMAND qiven-foundation-memory-observer)
+
 add_executable(qiven-foundation-hashing hashing.cpp)
 
 target_link_libraries(qiven-foundation-hashing PRIVATE qiven::foundation)
@@ -285,6 +297,8 @@ add_library(
         headers/byte_cursor.cpp
         headers/byte_writer.cpp
         headers/hashing.cpp
+        headers/error.cpp
+        headers/memory_observer.cpp
         headers/checked_arithmetic.cpp
         headers/checked_integer_cast.cpp
         headers/checked_span.cpp
