@@ -1,3 +1,4 @@
+#include <qiven/byte_cursor.hpp>
 #include <qiven/byte_writer.hpp>
 #include <qiven/types.hpp>
 
@@ -5,6 +6,7 @@
 #include <cstddef>
 #include <limits>
 #include <span>
+#include <string>
 #include <type_traits>
 
 namespace
@@ -137,5 +139,125 @@ int main()
     const auto whole = bounded.reserve(bytes.size());
     if (!whole || whole->data() != bytes.data() || whole->size() != bytes.size() || !bounded.empty())
         return 20;
+    // ---- adversarial phase (2026-09-20): failed reserves must not consume
+    // capacity, extreme counts must not trap, and zero is always valid ----
+
+    const std::string eol(1, char(10));
+
+    // reserve(0) succeeds on empty and non-empty writers (zero is always valid)
+    {
+        std::array<std::byte, 4> buffer {};
+        qiven::ByteWriter empty { std::span<std::byte>(buffer.data(), 0) };
+        if (!empty.reserve(0).has_value())
+            return 21;
+        if (!empty.empty())
+            return 22;
+        qiven::ByteWriter some { std::span<std::byte>(buffer) };
+        if (!some.reserve(0).has_value())
+            return 23;
+        if (some.remaining() != buffer.size())
+            return 24; // reserve(0) consumes nothing
+    }
+
+    // a failed reserve must NOT consume: retrying with a valid count works
+    {
+        std::array<std::byte, 4> buffer {};
+        qiven::ByteWriter writer { std::span<std::byte>(buffer) };
+        if (writer.reserve(buffer.size() + 1).has_value())
+            return 25;
+        if (writer.remaining() != buffer.size())
+            return 26;
+        const auto retry = writer.reserve(1);
+        if (!retry.has_value() || retry->size() != 1)
+            return 27;
+        retry->front() = std::byte { 0x5A };
+        if (buffer.front() != std::byte { 0x5A })
+            return 28; // the reserved span writes through to the buffer
+    }
+
+    // extreme count: SIZE_MAX compares safely and refuses without overflow
+    {
+        std::array<std::byte, 4> buffer {};
+        qiven::ByteWriter writer { std::span<std::byte>(buffer) };
+        if (writer.reserve(std::numeric_limits<usize>::max()).has_value())
+            return 29;
+        if (writer.remaining() != buffer.size())
+            return 30;
+    }
+
+    // write-through ordering: one-at-a-time reserves preserve content order,
+    // and a reader over the same buffer sees exactly what was written
+    {
+        std::array<std::byte, 5> buffer {};
+        qiven::ByteWriter writer { std::span<std::byte>(buffer) };
+        for (std::size_t i = 0; i < buffer.size(); ++i)
+        {
+            const auto slot = writer.reserve(1);
+            if (!slot.has_value())
+                return 31;
+            slot->front() = std::byte { static_cast<unsigned char>(0x10 * (i + 1)) };
+        }
+        if (!writer.empty())
+            return 32;
+        if (writer.reserve(1).has_value())
+            return 33;
+        qiven::ByteCursor readback { std::span<const std::byte>(buffer) };
+        for (std::size_t i = 0; i < buffer.size(); ++i)
+        {
+            const auto byte_span = readback.take(1);
+            if (!byte_span.has_value())
+                return 34;
+            if (byte_span->front() != std::byte { static_cast<unsigned char>(0x10 * (i + 1)) })
+                return 35;
+        }
+    }
+
+    // interleaved zero and non-zero reserves on one writer
+    {
+        std::array<std::byte, 3> buffer {};
+        qiven::ByteWriter writer { std::span<std::byte>(buffer) };
+        if (!writer.reserve(0).has_value())
+            return 36;
+        const auto two = writer.reserve(2);
+        if (!two.has_value())
+            return 37;
+        two->front() = std::byte { 1 };
+        if (!writer.reserve(0).has_value())
+            return 38;
+        const auto last = writer.reserve(1);
+        if (!last.has_value())
+            return 39;
+        last->front() = std::byte { 2 };
+        if (writer.reserve(1).has_value())
+            return 40; // exactly full now
+        if (buffer[0] != std::byte { 1 } || buffer[1] != std::byte { 0 } || buffer[2] != std::byte { 2 })
+            return 41; // the reserved spans wrote exactly where the test wrote them
+    }
+
+    // constexpr: fill and exhaust sequences are evaluatable at compile time
+    {
+        constexpr bool fills_and_exhausts = [] {
+            std::array<std::byte, 3> buffer {};
+            qiven::ByteWriter writer { std::span<std::byte>(buffer) };
+            for (std::size_t i = 0; i < buffer.size(); ++i)
+            {
+                const auto slot = writer.reserve(1);
+                if (!slot.has_value())
+                    return false;
+                slot->front() = std::byte { static_cast<unsigned char>(i) };
+            }
+            return writer.empty() && !writer.reserve(1).has_value();
+        }();
+        static_assert(fills_and_exhausts);
+
+        constexpr bool zero_reserve_on_empty_ok = [] {
+            std::array<std::byte, 2> buffer {};
+            qiven::ByteWriter writer { std::span<std::byte>(buffer.data(), 0) };
+            return writer.reserve(0).has_value() && writer.empty();
+        }();
+        static_assert(zero_reserve_on_empty_ok);
+    }
+
+    std::printf("[ OK ] adversarial writer cases%s", eol.c_str());
     return 0;
 }
