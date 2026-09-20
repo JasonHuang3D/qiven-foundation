@@ -23,10 +23,10 @@
 #include <vector>
 
 using namespace qiven::memory;
-using qiven::usize;
-using qiven::u8;
 using qiven::isize;
 using qiven::u64;
+using qiven::u8;
+using qiven::usize;
 
 namespace
 {
@@ -59,7 +59,7 @@ int main()
         for (usize round = 0; round < 10; ++round)
         {
             const usize size = kMaxSingleAlloc - round * 1024;
-            auto* ptr = new std::byte[size];
+            auto* ptr        = new std::byte[size];
             fill_pattern(ptr, size, static_cast<u8>(round));
             if (!verify_pattern(ptr, size, static_cast<u8>(round)))
             {
@@ -86,7 +86,7 @@ int main()
         for (usize i = 0; i < kStressRounds; ++i)
         {
             const usize size = (i % 64 + 1) * 16; // 16..1024 bytes
-            auto* ptr = new std::byte[size];
+            auto* ptr        = new std::byte[size];
             fill_pattern(ptr, size, static_cast<u8>(i));
             AllocationObserver::observe_allocate(size);
             live.emplace_back(ptr, size);
@@ -215,7 +215,7 @@ int main()
     {
         AllocationObserver::reset();
         usize prev_allocs = 0;
-        usize prev_bytes = 0;
+        usize prev_bytes  = 0;
         for (usize i = 0; i < 100; ++i)
         {
             AllocationObserver::observe_allocate(i * 10);
@@ -231,7 +231,7 @@ int main()
                 return 1;
             }
             prev_allocs = s.total_allocations;
-            prev_bytes = s.total_bytes_allocated;
+            prev_bytes  = s.total_bytes_allocated;
         }
     }
     std::printf("[ OK ] 6: counter monotonicity\n");
@@ -269,7 +269,7 @@ int main()
         const auto s = AllocationObserver::snapshot();
         if constexpr (AllocationObserver::enabled())
         {
-            const auto signed_usage = static_cast<isize>(s.current_usage);
+            const auto signed_usage    = static_cast<isize>(s.current_usage);
             const auto signed_expected = static_cast<isize>(expected_usage);
             // current_usage may underflow if we free more than we allocate;
             // the observer doesn't prevent this (that's the allocator's job)
