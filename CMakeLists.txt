@@ -45,6 +45,7 @@ set(
     ${CMAKE_CURRENT_SOURCE_DIR}/include/qiven/config.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/qiven/contracts.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/qiven/endian.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/qiven/hashing_sha256.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/qiven/memory/allocator.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/qiven/memory/layout.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/qiven/memory/linear_arena.hpp
@@ -53,6 +54,7 @@ set(
     ${CMAKE_CURRENT_SOURCE_DIR}/include/qiven/memory/owned_object.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/qiven/memory/system_allocator.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/qiven/platform.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/qiven/result.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/qiven/types.hpp
 )
 
