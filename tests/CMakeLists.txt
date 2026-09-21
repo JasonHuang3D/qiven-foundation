@@ -294,6 +294,36 @@ set_target_properties(
 
 add_test(NAME qiven-foundation.contracts COMMAND qiven-foundation-contracts)
 
+add_executable(qiven-foundation-result result.cpp)
+
+target_link_libraries(qiven-foundation-result PRIVATE qiven::foundation)
+qiven_enable_test_warnings(qiven-foundation-result)
+
+set_target_properties(
+    qiven-foundation-result
+    PROPERTIES
+        CXX_EXTENSIONS OFF
+        FOLDER "Tests"
+        VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+)
+
+add_test(NAME qiven-foundation.result COMMAND qiven-foundation-result)
+
+add_executable(qiven-foundation-hashing-sha256 hashing_sha256.cpp)
+
+target_link_libraries(qiven-foundation-hashing-sha256 PRIVATE qiven::foundation)
+qiven_enable_test_warnings(qiven-foundation-hashing-sha256)
+
+set_target_properties(
+    qiven-foundation-hashing-sha256
+    PROPERTIES
+        CXX_EXTENSIONS OFF
+        FOLDER "Tests"
+        VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+)
+
+add_test(NAME qiven-foundation.hashing-sha256 COMMAND qiven-foundation-hashing-sha256)
+
 add_library(
     qiven-foundation-header-check
     OBJECT
@@ -303,6 +333,7 @@ add_library(
         headers/byte_cursor.cpp
         headers/byte_writer.cpp
         headers/hashing.cpp
+        headers/hashing_sha256.cpp
         headers/error.cpp
         headers/memory_observer.cpp
         headers/checked_arithmetic.cpp
@@ -318,6 +349,7 @@ add_library(
         headers/owned_array.cpp
         headers/owned_object.cpp
         headers/platform.cpp
+        headers/result.cpp
         headers/system_allocator.cpp
         headers/types.cpp
 )

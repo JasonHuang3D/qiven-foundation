@@ -108,6 +108,12 @@ The `Error` type above is the foundation. A full `Result<T>` monad is
 deferred until K1 (where the kernel's commit path needs it), but the `Error`
 type is the prerequisite and lands now.
 
+**Activation record (2026-09-21):** F2 landed in the Runtime RCA-0 foundation
+batch as `qiven::Result<T, Reason>` (`include/qiven/result.hpp`) with `Error`
+as the default reason and domain-typed reasons permitted. The deferral above
+is history: the trigger (OBL-D3F7B2) fired with the Runtime program's
+RCA-3/RCA-4 evidence work as the forcing consumer.
+
 ## Rejected alternatives
 
 - **Exceptions** — Foundation is a no-exceptions library by engineering law.

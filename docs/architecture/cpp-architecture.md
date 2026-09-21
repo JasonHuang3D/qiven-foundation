@@ -95,7 +95,8 @@ channels are typed:
   failure path). Its landing home is qiven-foundation; the Runtime's
   K1 work is the first consumer that forces it (OBL-20260913T181224Z-
   9E27A4 / OBL-20260920T205211Z-D3F7B2 trigger). Interface sketch is in
-  the Runtime design §12; foundation owns the implementation.
+  the Runtime design §12; foundation owns the implementation. Landed as
+  `qiven::Result<T, Reason>` (`qiven/result.hpp`) in the RCA-0 batch.
 - programming errors / invariant violations → assertions, never
   recoverable channels.
 
@@ -126,11 +127,10 @@ public contracts.
 
 Non-cryptographic identity (correlation ids, fingerprint hashing of
 runtime strings) uses `qiven::fnv1a64`. Integrity-grade digests
-(decision binding, artifact identity) use SHA-256. SHA-256 does not yet
-exist in foundation; it enters as `qiven/hashing_sha256.hpp` in the
-Runtime's RCA-0 foundation batch (byte-level content integrity is an
-intrinsically foundational primitive — same reasoning as the fnv1a64
-distillation, bucket B).
+(decision binding, artifact identity) use SHA-256
+(`qiven/hashing_sha256.hpp`, landed in the Runtime's RCA-0 foundation
+batch — byte-level content integrity is an intrinsically foundational
+primitive, same reasoning as the fnv1a64 distillation, bucket B).
 
 ### 3.7 Build, naming, testing
 

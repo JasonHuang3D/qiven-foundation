@@ -111,6 +111,14 @@ no-exception consumers.
 
 A concrete result/status abstraction will be designed before APIs need one rather than invented ad hoc by each module.
 
+The common result vocabulary is `qiven::Result<T, Reason>` (`result.hpp`), landed at its OBL-D3F7B2 trigger in the
+Runtime RCA-0 foundation batch (2026-09-21). It holds exactly one of a success value or a typed reason, defaults the
+reason to `qiven::Error`, and lets a domain layer substitute its own typed reason (enum or small struct) instead of
+inventing a local result shape. `Result` is `[[nodiscard]]` at the type level, performs no allocation in any of its own
+operations, never throws from its own operations, and treats `value()`/`reason()` misuse as a programming error
+(`QIVEN_ASSERT`). Copy operations exist only while both alternatives are copy-constructible; a move-only value type
+yields a move-only `Result`.
+
 Arithmetic that derives byte counts, capacities, offsets, or externally controlled lengths must not silently wrap when
 overflow would change allocation or bounds semantics. Checked arithmetic reports overflow or underflow explicitly. Saturating
 or intentionally wrapping arithmetic, if introduced, must use distinct APIs because those are different contracts.
