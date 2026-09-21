@@ -40,8 +40,11 @@ inline constexpr u64 fnv1a64_prime        = 1099511628211ULL;
     return fnv1a64(bytes.data(), bytes.size(), seed);
 }
 
-[[nodiscard]] constexpr u64 fnv1a64(std::string_view text,
-                                    u64 seed = fnv1a64_offset_basis) noexcept
+// Runtime-only: reinterpret_cast cannot appear in a constant expression, so
+// this overload must not promise constexpr (Clang rejects the promise as an
+// error). The pointer/span overloads stay constexpr.
+[[nodiscard]] inline u64 fnv1a64(std::string_view text,
+                                 u64 seed = fnv1a64_offset_basis) noexcept
 {
     return fnv1a64(reinterpret_cast<const std::byte*>(text.data()), text.size(), seed);
 }
