@@ -38,3 +38,4 @@ compile_commands.json
 # python bytecode
 __pycache__/
 *.pyc
+.generated-temp/
