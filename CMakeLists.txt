@@ -77,7 +77,7 @@ target_sources(
 )
 
 if(MSVC)
-    target_compile_options(qiven-foundation PRIVATE /W4 /permissive- /utf-8)
+    target_compile_options(qiven-foundation PRIVATE /W4 /permissive- /utf-8 /MP)
 else()
     target_compile_options(qiven-foundation PRIVATE -Wall -Wextra -Wpedantic -Wconversion -Wsign-conversion)
 endif()
@@ -95,6 +95,32 @@ if(CMAKE_GENERATOR MATCHES "^Visual Studio")
         FILES ${QIVEN_FOUNDATION_PRIVATE_SOURCES}
     )
 endif()
+
+# Build-performance policy (devkit docs/conventions/build-performance.md):
+# the foundation vocabulary stack precompiles once for the library and is
+# reused by the test targets; the header-check target is EXEMPT by design
+# (injected PCH includes would mask a self-containment defect).
+target_precompile_headers(
+    qiven-foundation
+    PRIVATE
+        <qiven/contracts.hpp>
+        <qiven/error.hpp>
+        <qiven/hashing.hpp>
+        <qiven/hashing_sha256.hpp>
+        <qiven/result.hpp>
+        <qiven/types.hpp>
+        <algorithm>
+        <array>
+        <cstdint>
+        <cstddef>
+        <limits>
+        <memory>
+        <optional>
+        <span>
+        <string>
+        <utility>
+        <vector>
+)
 
 option(QIVEN_BUILD_TESTS "Build Qiven Foundation tests" ${PROJECT_IS_TOP_LEVEL})
 
