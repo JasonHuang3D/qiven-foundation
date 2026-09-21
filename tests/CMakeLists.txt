@@ -1,6 +1,6 @@
 function(qiven_enable_test_warnings target)
     if(MSVC)
-        target_compile_options(${target} PRIVATE /W4 /permissive- /utf-8)
+        target_compile_options(${target} PRIVATE /W4 /permissive- /utf-8 /MP)
     else()
         target_compile_options(${target} PRIVATE -Wall -Wextra -Wpedantic -Wconversion -Wsign-conversion)
     endif()
@@ -10,6 +10,7 @@ add_executable(qiven-foundation-smoke smoke.cpp)
 
 target_link_libraries(qiven-foundation-smoke PRIVATE qiven::foundation)
 qiven_enable_test_warnings(qiven-foundation-smoke)
+target_precompile_headers(qiven-foundation-smoke REUSE_FROM qiven-foundation)
 
 set_target_properties(
     qiven-foundation-smoke
@@ -24,18 +25,21 @@ add_test(NAME qiven-foundation.smoke COMMAND qiven-foundation-smoke)
 add_executable(qiven-foundation-error error.cpp)
 target_link_libraries(qiven-foundation-error PRIVATE qiven::foundation)
 qiven_enable_test_warnings(qiven-foundation-error)
+target_precompile_headers(qiven-foundation-error REUSE_FROM qiven-foundation)
 set_target_properties(qiven-foundation-error PROPERTIES CXX_EXTENSIONS OFF FOLDER "Tests")
 add_test(NAME qiven-foundation.error COMMAND qiven-foundation-error)
 
 add_executable(qiven-foundation-memory-observer-stress memory_observer_stress.cpp)
 target_link_libraries(qiven-foundation-memory-observer-stress PRIVATE qiven::foundation)
 qiven_enable_test_warnings(qiven-foundation-memory-observer-stress)
+target_precompile_headers(qiven-foundation-memory-observer-stress REUSE_FROM qiven-foundation)
 set_target_properties(qiven-foundation-memory-observer-stress PROPERTIES CXX_EXTENSIONS OFF FOLDER "Tests")
 add_test(NAME qiven-foundation.memory-observer-stress COMMAND qiven-foundation-memory-observer-stress)
 
 add_executable(qiven-foundation-memory-observer memory_observer.cpp)
 target_link_libraries(qiven-foundation-memory-observer PRIVATE qiven::foundation)
 qiven_enable_test_warnings(qiven-foundation-memory-observer)
+target_precompile_headers(qiven-foundation-memory-observer REUSE_FROM qiven-foundation)
 set_target_properties(qiven-foundation-memory-observer PROPERTIES CXX_EXTENSIONS OFF FOLDER "Tests")
 add_test(NAME qiven-foundation.memory-observer COMMAND qiven-foundation-memory-observer)
 
@@ -43,6 +47,7 @@ add_executable(qiven-foundation-hashing hashing.cpp)
 
 target_link_libraries(qiven-foundation-hashing PRIVATE qiven::foundation)
 qiven_enable_test_warnings(qiven-foundation-hashing)
+target_precompile_headers(qiven-foundation-hashing REUSE_FROM qiven-foundation)
 
 set_target_properties(
     qiven-foundation-hashing
@@ -58,6 +63,7 @@ add_executable(qiven-foundation-platform-primitives platform_primitives.cpp)
 
 target_link_libraries(qiven-foundation-platform-primitives PRIVATE qiven::foundation)
 qiven_enable_test_warnings(qiven-foundation-platform-primitives)
+target_precompile_headers(qiven-foundation-platform-primitives REUSE_FROM qiven-foundation)
 
 set_target_properties(
     qiven-foundation-platform-primitives
@@ -73,6 +79,7 @@ add_executable(qiven-foundation-alignment alignment.cpp)
 
 target_link_libraries(qiven-foundation-alignment PRIVATE qiven::foundation)
 qiven_enable_test_warnings(qiven-foundation-alignment)
+target_precompile_headers(qiven-foundation-alignment REUSE_FROM qiven-foundation)
 
 set_target_properties(
     qiven-foundation-alignment
@@ -88,6 +95,7 @@ add_executable(qiven-foundation-allocator allocator.cpp)
 
 target_link_libraries(qiven-foundation-allocator PRIVATE qiven::foundation)
 qiven_enable_test_warnings(qiven-foundation-allocator)
+target_precompile_headers(qiven-foundation-allocator REUSE_FROM qiven-foundation)
 
 set_target_properties(
     qiven-foundation-allocator
@@ -103,6 +111,7 @@ add_executable(qiven-foundation-linear-arena linear_arena.cpp)
 
 target_link_libraries(qiven-foundation-linear-arena PRIVATE qiven::foundation)
 qiven_enable_test_warnings(qiven-foundation-linear-arena)
+target_precompile_headers(qiven-foundation-linear-arena REUSE_FROM qiven-foundation)
 
 set_target_properties(
     qiven-foundation-linear-arena
@@ -118,6 +127,7 @@ add_executable(qiven-foundation-system-allocator system_allocator.cpp)
 
 target_link_libraries(qiven-foundation-system-allocator PRIVATE qiven::foundation)
 qiven_enable_test_warnings(qiven-foundation-system-allocator)
+target_precompile_headers(qiven-foundation-system-allocator REUSE_FROM qiven-foundation)
 
 set_target_properties(
     qiven-foundation-system-allocator
@@ -133,6 +143,7 @@ add_executable(qiven-foundation-owned-allocation owned_allocation.cpp)
 
 target_link_libraries(qiven-foundation-owned-allocation PRIVATE qiven::foundation)
 qiven_enable_test_warnings(qiven-foundation-owned-allocation)
+target_precompile_headers(qiven-foundation-owned-allocation REUSE_FROM qiven-foundation)
 
 set_target_properties(
     qiven-foundation-owned-allocation
@@ -148,6 +159,7 @@ add_executable(qiven-foundation-owned-array owned_array.cpp)
 
 target_link_libraries(qiven-foundation-owned-array PRIVATE qiven::foundation)
 qiven_enable_test_warnings(qiven-foundation-owned-array)
+target_precompile_headers(qiven-foundation-owned-array REUSE_FROM qiven-foundation)
 
 set_target_properties(
     qiven-foundation-owned-array
@@ -163,6 +175,7 @@ add_executable(qiven-foundation-owned-object owned_object.cpp)
 
 target_link_libraries(qiven-foundation-owned-object PRIVATE qiven::foundation)
 qiven_enable_test_warnings(qiven-foundation-owned-object)
+target_precompile_headers(qiven-foundation-owned-object REUSE_FROM qiven-foundation)
 
 set_target_properties(
     qiven-foundation-owned-object
@@ -178,6 +191,7 @@ add_executable(qiven-foundation-layout layout.cpp)
 
 target_link_libraries(qiven-foundation-layout PRIVATE qiven::foundation)
 qiven_enable_test_warnings(qiven-foundation-layout)
+target_precompile_headers(qiven-foundation-layout REUSE_FROM qiven-foundation)
 
 set_target_properties(
     qiven-foundation-layout
@@ -193,6 +207,7 @@ add_executable(qiven-foundation-checked-arithmetic checked_arithmetic.cpp)
 
 target_link_libraries(qiven-foundation-checked-arithmetic PRIVATE qiven::foundation)
 qiven_enable_test_warnings(qiven-foundation-checked-arithmetic)
+target_precompile_headers(qiven-foundation-checked-arithmetic REUSE_FROM qiven-foundation)
 
 set_target_properties(
     qiven-foundation-checked-arithmetic
@@ -208,6 +223,7 @@ add_executable(qiven-foundation-checked-integer-cast checked_integer_cast.cpp)
 
 target_link_libraries(qiven-foundation-checked-integer-cast PRIVATE qiven::foundation)
 qiven_enable_test_warnings(qiven-foundation-checked-integer-cast)
+target_precompile_headers(qiven-foundation-checked-integer-cast REUSE_FROM qiven-foundation)
 
 set_target_properties(
     qiven-foundation-checked-integer-cast
@@ -223,6 +239,7 @@ add_executable(qiven-foundation-checked-span checked_span.cpp)
 
 target_link_libraries(qiven-foundation-checked-span PRIVATE qiven::foundation)
 qiven_enable_test_warnings(qiven-foundation-checked-span)
+target_precompile_headers(qiven-foundation-checked-span REUSE_FROM qiven-foundation)
 
 set_target_properties(
     qiven-foundation-checked-span
@@ -238,6 +255,7 @@ add_executable(qiven-foundation-byte-cursor byte_cursor.cpp)
 
 target_link_libraries(qiven-foundation-byte-cursor PRIVATE qiven::foundation)
 qiven_enable_test_warnings(qiven-foundation-byte-cursor)
+target_precompile_headers(qiven-foundation-byte-cursor REUSE_FROM qiven-foundation)
 
 set_target_properties(
     qiven-foundation-byte-cursor
@@ -253,6 +271,7 @@ add_executable(qiven-foundation-byte-writer byte_writer.cpp)
 
 target_link_libraries(qiven-foundation-byte-writer PRIVATE qiven::foundation)
 qiven_enable_test_warnings(qiven-foundation-byte-writer)
+target_precompile_headers(qiven-foundation-byte-writer REUSE_FROM qiven-foundation)
 
 set_target_properties(
     qiven-foundation-byte-writer
@@ -268,6 +287,7 @@ add_executable(qiven-foundation-endian endian.cpp)
 
 target_link_libraries(qiven-foundation-endian PRIVATE qiven::foundation)
 qiven_enable_test_warnings(qiven-foundation-endian)
+target_precompile_headers(qiven-foundation-endian REUSE_FROM qiven-foundation)
 
 set_target_properties(
     qiven-foundation-endian
@@ -283,6 +303,7 @@ add_executable(qiven-foundation-contracts contracts.cpp)
 
 target_link_libraries(qiven-foundation-contracts PRIVATE qiven::foundation)
 qiven_enable_test_warnings(qiven-foundation-contracts)
+target_precompile_headers(qiven-foundation-contracts REUSE_FROM qiven-foundation)
 
 set_target_properties(
     qiven-foundation-contracts
@@ -298,6 +319,7 @@ add_executable(qiven-foundation-result result.cpp)
 
 target_link_libraries(qiven-foundation-result PRIVATE qiven::foundation)
 qiven_enable_test_warnings(qiven-foundation-result)
+target_precompile_headers(qiven-foundation-result REUSE_FROM qiven-foundation)
 
 set_target_properties(
     qiven-foundation-result
@@ -313,6 +335,7 @@ add_executable(qiven-foundation-hashing-sha256 hashing_sha256.cpp)
 
 target_link_libraries(qiven-foundation-hashing-sha256 PRIVATE qiven::foundation)
 qiven_enable_test_warnings(qiven-foundation-hashing-sha256)
+target_precompile_headers(qiven-foundation-hashing-sha256 REUSE_FROM qiven-foundation)
 
 set_target_properties(
     qiven-foundation-hashing-sha256
@@ -362,4 +385,5 @@ set_target_properties(
     PROPERTIES
         CXX_EXTENSIONS OFF
         FOLDER "Tests/Header Checks"
+        DISABLE_PRECOMPILE_HEADERS ON
 )
