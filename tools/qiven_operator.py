@@ -15,7 +15,10 @@ import time
 from typing import Any
 
 
-ROOT = Path(__file__).resolve().parents[1]
+# ADR-0046 shim mode: an external repo may delegate to this operator by
+# setting QIVEN_TARGET_ROOT to its own repository root (workspace shim +
+# pin consumption); unset means this checkout is the target itself.
+ROOT = Path(os.environ.get("QIVEN_TARGET_ROOT", Path(__file__).resolve().parents[1])).resolve()
 CONFIG_PATH = ROOT / ".qiven" / "operator.json"
 HEARTBEAT_SECONDS = 5.0
 POLL_SECONDS = 0.05
@@ -123,9 +126,61 @@ def _git(*args: str) -> subprocess.CompletedProcess[str]:
 # dies — or the operator times out — the child keeps running; exec status
 # re-attaches cheaply. An exit code no living supervisor observed is
 # reported as indeterminate, never guessed.
+#
+# Window discipline (2026-09-23 fix): the child is spawned with
+# CREATE_NO_WINDOW — a HIDDEN console — never DETACHED_PROCESS. A detached
+# child has NO console, so any descendant that needs one (cmd.exe batch
+# chains, vcvars, build tools) allocates a NEW VISIBLE console: popup
+# windows flash on screen and their output goes to that console instead of
+# the run log (empty-log symptom), and console-DLL initialization can fail
+# outright (child exit 0xC0000142, observed with vcvars64.bat). With
+# CREATE_NO_WINDOW every console in the tree is invisible and stdio stays
+# on the redirected handles.
 # ---------------------------------------------------------------------------
 EXEC_DEFAULT_TIMEOUT_SECONDS = 120.0
 EXEC_EXIT_STILL_RUNNING = 124
+_BATCH_SUFFIXES = (".cmd", ".bat")
+
+
+def _exec_creationflags(breakaway: bool = True) -> int:
+    """Windows creation flags for supervised detached exec (see the window
+    discipline note above). breakaway=False is the retry path when the
+    ancestor job forbids CREATE_BREAKAWAY_FROM_JOB."""
+    if os.name != "nt":
+        return 0
+    flags = subprocess.CREATE_NO_WINDOW | subprocess.CREATE_NEW_PROCESS_GROUP
+    if breakaway:
+        flags |= subprocess.CREATE_BREAKAWAY_FROM_JOB
+    return flags
+
+
+def _exec_prepare_argv(argv: list[str]) -> list[str]:
+    """Harden the exec target before spawning.
+
+    1. A path-like argv[0] (absolute, or containing a separator) that
+       exists relative to the operator ROOT is resolved to its absolute
+       path — the child's CreateProcess resolves the APPLICATION against
+       the CALLER's directories, not the child's cwd, so a relative path
+       that looks valid can still WinError 2.
+    2. .cmd/.bat targets run through an explicit `cmd.exe /d /c call ...`
+       (/d skips AutoRun registry scripts; the explicit form replaces
+       CreateProcess's implicit — and undocumented — batch dispatch, and
+       makes the console-handling path deterministic).
+    """
+    if not argv:
+        return argv
+    head = argv[0]
+    rest = argv[1:]
+    resolved = head
+    if os.path.isabs(head) or ("/" in head) or ("\\" in head):
+        candidate = Path(head)
+        if not candidate.is_absolute():
+            candidate = ROOT / head
+        if candidate.is_file():
+            resolved = candidate.resolve()
+    if str(resolved).lower().endswith(_BATCH_SUFFIXES):
+        return ["cmd.exe", "/d", "/c", "call", str(resolved), *rest]
+    return [str(resolved), *rest]
 
 
 def _exec_dir() -> Path:
@@ -234,11 +289,10 @@ def _exec_supervise(argv: list[str], timeout_seconds: float, console: Console) -
     log_path = _exec_log_path(exec_id)
     log_path.parent.mkdir(parents=True, exist_ok=True)
 
-    creationflags = 0
+    spawn_argv = _exec_prepare_argv(argv)
     popen_kwargs: dict[str, Any] = {}
     if os.name == "nt":
-        creationflags = subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.CREATE_BREAKAWAY_FROM_JOB
-        popen_kwargs["creationflags"] = creationflags
+        popen_kwargs["creationflags"] = _exec_creationflags(breakaway=True)
     else:
         popen_kwargs["start_new_session"] = True
 
@@ -246,16 +300,15 @@ def _exec_supervise(argv: list[str], timeout_seconds: float, console: Console) -
     try:
         with log_path.open("wb") as log:
             try:
-                process = subprocess.Popen(argv, cwd=ROOT, stdout=log, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL, **popen_kwargs)
+                process = subprocess.Popen(spawn_argv, cwd=ROOT, stdout=log, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL, **popen_kwargs)
             except OSError as exc:
                 # CREATE_BREAKAWAY_FROM_JOB fails outright when the ancestor
                 # job forbids breakaway; retry without it — survival of the
                 # child across CALLER death is best-effort, never a lie.
-                popen_kwargs.pop("creationflags", None)
                 if os.name == "nt":
-                    popen_kwargs["creationflags"] = creationflags & ~subprocess.CREATE_BREAKAWAY_FROM_JOB
+                    popen_kwargs["creationflags"] = _exec_creationflags(breakaway=False)
                 try:
-                    process = subprocess.Popen(argv, cwd=ROOT, stdout=log, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL, **popen_kwargs)
+                    process = subprocess.Popen(spawn_argv, cwd=ROOT, stdout=log, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL, **popen_kwargs)
                 except OSError as second:
                     detail = f"could not start exec process: {second}"
                     console.emit("fail", detail)
@@ -264,6 +317,7 @@ def _exec_supervise(argv: list[str], timeout_seconds: float, console: Console) -
             record = {
                 "id": exec_id,
                 "argv": argv,
+                "spawn_argv": spawn_argv,
                 "pid": process.pid,
                 "log": str(log_path),
                 "started_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
@@ -504,6 +558,38 @@ def _builtin(name: str, spec: dict[str, Any], console: Console, expect_head: str
     return Result(name, "pass", 0, duration)
 
 
+def _record_duration(result: Result, kind: str) -> None:
+    """Append one task-duration event to the durable durations log (the
+    evidence base for long-class routing decisions; owner 2026-09-23).
+    Never raises: logging must not gate."""
+    try:
+        path = ROOT / ".generated-temp" / "operator" / "task-durations.jsonl"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        event = {
+            "at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+            "kind": kind,
+            "task": result.name,
+            "status": result.status,
+            "duration_seconds": round(result.duration_seconds, 3),
+            "head": _git_head_or_empty(),
+        }
+        with path.open("a", encoding="utf-8", newline="\n") as handle:
+            handle.write(json.dumps(event, ensure_ascii=False) + "\n")
+    except Exception:
+        pass
+
+
+def _git_head_or_empty() -> str:
+    try:
+        completed = subprocess.run(
+            ["git", "-C", str(ROOT), "rev-parse", "HEAD"],
+            capture_output=True, text=True, timeout=5, check=False,
+        )
+        return completed.stdout.strip()[:12] if completed.returncode == 0 else ""
+    except Exception:
+        return ""
+
+
 def _run_task(name: str, tasks: dict[str, Any], console: Console, expect_head: str | None) -> Result:
     spec = tasks.get(name)
     if not isinstance(spec, dict):
@@ -511,8 +597,11 @@ def _run_task(name: str, tasks: dict[str, Any], console: Console, expect_head: s
         console.emit("fail", detail)
         return Result(name, "fail", 2, detail=detail)
     if "builtin" in spec:
-        return _builtin(name, spec, console, expect_head)
-    return _run_process(name, spec, console)
+        result = _builtin(name, spec, console, expect_head)
+    else:
+        result = _run_process(name, spec, console)
+    _record_duration(result, kind="task")
+    return result
 
 
 def _unknown_task_error(name: str, tasks: dict[str, Any]) -> str:
@@ -539,7 +628,8 @@ def _write_gate_receipt(payload: dict[str, Any]) -> None:
             "status": payload.get("status"),
             "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
             "tasks": [
-                {"name": r.get("name"), "status": r.get("status")}
+                {"name": r.get("name"), "status": r.get("status"),
+                 "duration_seconds": r.get("duration_seconds")}
                 for r in payload.get("results", [])
             ],
         }
