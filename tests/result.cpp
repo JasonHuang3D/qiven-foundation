@@ -186,6 +186,31 @@ int main()
         QIVEN_VERIFY(r.reason().message.empty());
     }
 
+    // void specialization: ok() is the only success construction, failures
+    // carry the reason, and the copy/move channel keeps working
+    {
+        const Result<void> good = Result<void>::ok();
+        QIVEN_VERIFY(good.is_ok());
+        static_cast<void>(good);
+
+        const Result<void> bad = Result<void>::fail(Error::make(error_category::timeout, 65));
+        QIVEN_VERIFY(!bad.is_ok());
+        QIVEN_VERIFY(bad.reason().code == 65);
+
+        const auto copied = bad;
+        QIVEN_VERIFY(!copied.is_ok());
+        QIVEN_VERIFY(copied.reason().code == 65);
+        auto moved = std::move(copied);
+        QIVEN_VERIFY(!moved.is_ok());
+        moved = Result<void>::ok();
+        QIVEN_VERIFY(moved.is_ok());
+
+        const Result<void, StoreFailure> typed =
+            Result<void, StoreFailure>::fail(StoreFailure::OutcomeUnknown);
+        QIVEN_VERIFY(!typed.is_ok());
+        QIVEN_VERIFY(typed.reason() == StoreFailure::OutcomeUnknown);
+    }
+
     std::printf("[ OK ] result\n");
     return 0;
 }
