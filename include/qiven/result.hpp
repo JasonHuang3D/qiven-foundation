@@ -240,8 +240,7 @@ public:
         return out;
     }
 
-    Result(const Result& other) noexcept(std::is_nothrow_copy_constructible_v<Reason>)
-    :
+    Result(const Result& other) noexcept(std::is_nothrow_copy_constructible_v<Reason>) :
     m_has_value(other.m_has_value)
     {
         if (!m_has_value)
@@ -250,8 +249,7 @@ public:
         }
     }
 
-    Result(Result&& other) noexcept(std::is_nothrow_move_constructible_v<Reason>)
-    :
+    Result(Result&& other) noexcept(std::is_nothrow_move_constructible_v<Reason>) :
     m_has_value(other.m_has_value)
     {
         if (!m_has_value)
