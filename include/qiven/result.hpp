@@ -236,7 +236,7 @@ public:
     {
         Result out;
         out.m_has_value = false;
-        ::new (static_cast<void*>(std::addressof(out.m_reason))) Reason(std::move(reason));
+        ::new (static_cast<void*>(std::addressof(out.m_storage.m_reason))) Reason(std::move(reason));
         return out;
     }
 
@@ -245,7 +245,7 @@ public:
     {
         if (!m_has_value)
         {
-            ::new (static_cast<void*>(std::addressof(m_reason))) Reason(other.m_reason);
+            ::new (static_cast<void*>(std::addressof(m_storage.m_reason))) Reason(other.m_storage.m_reason);
         }
     }
 
@@ -254,7 +254,7 @@ public:
     {
         if (!m_has_value)
         {
-            ::new (static_cast<void*>(std::addressof(m_reason))) Reason(std::move(other.m_reason));
+            ::new (static_cast<void*>(std::addressof(m_storage.m_reason))) Reason(std::move(other.m_storage.m_reason));
         }
     }
 
@@ -266,7 +266,7 @@ public:
             m_has_value = other.m_has_value;
             if (!m_has_value)
             {
-                ::new (static_cast<void*>(std::addressof(m_reason))) Reason(other.m_reason);
+                ::new (static_cast<void*>(std::addressof(m_storage.m_reason))) Reason(other.m_storage.m_reason);
             }
         }
         return *this;
@@ -280,7 +280,7 @@ public:
             m_has_value = other.m_has_value;
             if (!m_has_value)
             {
-                ::new (static_cast<void*>(std::addressof(m_reason))) Reason(std::move(other.m_reason));
+                ::new (static_cast<void*>(std::addressof(m_storage.m_reason))) Reason(std::move(other.m_storage.m_reason));
             }
         }
         return *this;
@@ -304,37 +304,48 @@ public:
     [[nodiscard]] Reason& reason() & noexcept
     {
         QIVEN_ASSERT(!m_has_value);
-        return m_reason;
+        return m_storage.m_reason;
     }
 
     [[nodiscard]] const Reason& reason() const& noexcept
     {
         QIVEN_ASSERT(!m_has_value);
-        return m_reason;
+        return m_storage.m_reason;
     }
 
     [[nodiscard]] Reason&& reason() && noexcept
     {
         QIVEN_ASSERT(!m_has_value);
-        return static_cast<Reason&&>(m_reason);
+        return static_cast<Reason&&>(m_storage.m_reason);
     }
 
 private:
     Result() noexcept = default; // used by ok()
 
+    // Named union mirroring the primary template's Storage: the reason
+    // member has a non-trivial default constructor, so an anonymous union
+    // would implicitly delete the default constructor ok() needs.
+    union Storage
+    {
+        Storage() noexcept
+        {
+        }
+        ~Storage()
+        {
+        }
+        char m_unused;
+        Reason m_reason;
+    };
+
     void destroy_active() noexcept
     {
         if (!m_has_value)
         {
-            m_reason.~Reason();
+            m_storage.m_reason.~Reason();
         }
     }
 
-    union
-    {
-        char m_unused;
-        Reason m_reason;
-    };
+    Storage m_storage;
     bool m_has_value = false;
 };
 } // namespace qiven
