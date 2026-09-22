@@ -209,4 +209,134 @@ private:
     Storage m_storage;
     bool m_has_value;
 };
+
+// Void specialization: the success state carries no value, so it is
+// constructed via ok() and the value() accessors do not exist. Everything
+// else (nodiscard, fail()-only failures, no-throw contract, misuse trips
+// QIVEN_ASSERT) matches the primary template. Required by value-less
+// mutation APIs (for example qiven-runtime's IRuntimeJournalPort::append,
+// MVP-0): the primary template cannot express a void success.
+template <typename Reason>
+class [[nodiscard]] Result<void, Reason>
+{
+    static_assert(!std::is_reference_v<Reason>, "Result reason type must be an object type");
+
+public:
+    using value_type  = void;
+    using reason_type = Reason;
+
+    [[nodiscard]] static Result ok() noexcept
+    {
+        Result out;
+        out.m_has_value = true;
+        return out;
+    }
+
+    [[nodiscard]] static Result fail(Reason reason) noexcept(std::is_nothrow_move_constructible_v<Reason>)
+    {
+        Result out;
+        out.m_has_value = false;
+        ::new (static_cast<void*>(std::addressof(out.m_reason))) Reason(std::move(reason));
+        return out;
+    }
+
+    Result(const Result& other) noexcept(std::is_nothrow_copy_constructible_v<Reason>)
+    :
+    m_has_value(other.m_has_value)
+    {
+        if (!m_has_value)
+        {
+            ::new (static_cast<void*>(std::addressof(m_reason))) Reason(other.m_reason);
+        }
+    }
+
+    Result(Result&& other) noexcept(std::is_nothrow_move_constructible_v<Reason>)
+    :
+    m_has_value(other.m_has_value)
+    {
+        if (!m_has_value)
+        {
+            ::new (static_cast<void*>(std::addressof(m_reason))) Reason(std::move(other.m_reason));
+        }
+    }
+
+    Result& operator=(const Result& other) noexcept(std::is_nothrow_copy_assignable_v<Reason>)
+    {
+        if (this != &other)
+        {
+            destroy_active();
+            m_has_value = other.m_has_value;
+            if (!m_has_value)
+            {
+                ::new (static_cast<void*>(std::addressof(m_reason))) Reason(other.m_reason);
+            }
+        }
+        return *this;
+    }
+
+    Result& operator=(Result&& other) noexcept(std::is_nothrow_move_assignable_v<Reason>)
+    {
+        if (this != &other)
+        {
+            destroy_active();
+            m_has_value = other.m_has_value;
+            if (!m_has_value)
+            {
+                ::new (static_cast<void*>(std::addressof(m_reason))) Reason(std::move(other.m_reason));
+            }
+        }
+        return *this;
+    }
+
+    ~Result()
+    {
+        destroy_active();
+    }
+
+    [[nodiscard]] bool is_ok() const noexcept
+    {
+        return m_has_value;
+    }
+
+    [[nodiscard]] explicit operator bool() const noexcept
+    {
+        return m_has_value;
+    }
+
+    [[nodiscard]] Reason& reason() & noexcept
+    {
+        QIVEN_ASSERT(!m_has_value);
+        return m_reason;
+    }
+
+    [[nodiscard]] const Reason& reason() const& noexcept
+    {
+        QIVEN_ASSERT(!m_has_value);
+        return m_reason;
+    }
+
+    [[nodiscard]] Reason&& reason() && noexcept
+    {
+        QIVEN_ASSERT(!m_has_value);
+        return static_cast<Reason&&>(m_reason);
+    }
+
+private:
+    Result() noexcept = default; // used by ok()
+
+    void destroy_active() noexcept
+    {
+        if (!m_has_value)
+        {
+            m_reason.~Reason();
+        }
+    }
+
+    union
+    {
+        char m_unused;
+        Reason m_reason;
+    };
+    bool m_has_value = false;
+};
 } // namespace qiven
