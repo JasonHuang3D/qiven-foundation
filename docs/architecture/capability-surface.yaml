@@ -1,0 +1,39 @@
+schema_version: 1
+surface: foundation-capability-inventory
+declared_at: '2026-09-24T20:25:00Z'
+authority: >-
+  CA-0 (ADR-0050 roadmap delivery map 6.3: machine-readable capability
+  surface pointing to existing public primitives and their authoritative
+  contracts; NO speculative new primitives in this transaction). Consumed
+  by semantic-owner discovery (TCA architecture §5) and by RR-0
+  (qiven-runtime docs/design/rr0-byte-representation.md - the owning
+  bounded ByteBuilder admission lands WITH its implementation batch).
+primitives:
+  - {name: types, header: include/qiven/types.hpp, semantics: fixed-width aliases and core vocabulary}
+  - {name: contracts, header: include/qiven/contracts.hpp, semantics: QIVEN_ASSERT / contract failure channel}
+  - {name: platform, header: include/qiven/platform.hpp, semantics: platform identification macros}
+  - {name: alignment, header: include/qiven/alignment.hpp, semantics: alignment helpers}
+  - {name: byte_writer, header: include/qiven/byte_writer.hpp, semantics: NON-OWNING fixed-capacity write cursor (reserve-carving, optional-failure)}
+  - {name: byte_cursor, header: include/qiven/byte_cursor.hpp, semantics: NON-OWNING bounded read cursor (take, optional-failure)}
+  - {name: endian, header: include/qiven/endian.hpp, semantics: fixed-width LE/BE encode/decode u16/u32/u64 (bool/optional-returning, host-endian-independent)}
+  - {name: checked_span, header: include/qiven/checked_span.hpp, semantics: optional-returning bounds-checked subspan}
+  - {name: checked_arithmetic, header: include/qiven/checked_arithmetic.hpp, semantics: overflow-checked arithmetic}
+  - {name: checked_integer_cast, header: include/qiven/checked_integer_cast.hpp, semantics: bounds-checked integer casts}
+  - {name: error, header: include/qiven/error.hpp, semantics: error_category + Error value type}
+  - {name: result, header: include/qiven/result.hpp, semantics: Result<T,Reason> incl. Result<void> partial specialization (named-union storage; docs/design/result-void.md)}
+  - {name: hashing, header: include/qiven/hashing.hpp, semantics: fnv1a64 (non-cryptographic)}
+  - {name: hashing_sha256, header: include/qiven/hashing_sha256.hpp, semantics: SHA256Core/SHA256Hasher}
+  - {name: memory.allocator, header: include/qiven/memory/allocator.hpp, semantics: AllocatorRef type-erased non-owning allocator reference}
+  - {name: memory.layout, header: include/qiven/memory/layout.hpp, semantics: allocation layout}
+  - {name: memory.linear_arena, header: include/qiven/memory/linear_arena.hpp, semantics: bump arena}
+  - {name: memory.owned_allocation, header: include/qiven/memory/owned_allocation.hpp, semantics: move-only RAII owned allocation}
+  - {name: memory.owned_array, header: include/qiven/memory/owned_array.hpp, semantics: move-only owning array}
+  - {name: memory.owned_object, header: include/qiven/memory/owned_object.hpp, semantics: move-only owning object}
+  - {name: memory.observer, header: include/qiven/memory/observer.hpp, semantics: MemoryStats/AllocationObserver/ScopedMemoryWatch}
+  - {name: memory.system_allocator, header: include/qiven/memory/system_allocator.hpp, semantics: system allocator adapter}
+known_gaps:
+  - {name: byte_builder, status: admitted-not-yet-landed, decision: 'qiven-runtime docs/design/rr0-byte-representation.md §2 (ADR-0024 admission 2026-09-24): owning growing bounded byte accumulator with scalar-put composition; lands with the RR-0 implementation batch'}
+laws:
+  - docs/architecture/foundation.md (mission, dependency law, §15 change/admission rule)
+  - docs/architecture/cpp-architecture.md (downward-only semantic ownership)
+  - qiven-context decisions/ADR-0024.md (semantic ownership over consumer count)
