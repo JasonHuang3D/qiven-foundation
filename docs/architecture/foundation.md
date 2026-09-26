@@ -1,284 +1,206 @@
 # Qiven Foundation Architecture
 
-This document defines the initial architectural contract of Qiven Foundation. It is deliberately stricter than the current
-amount of code: the point is to constrain future growth before convenience turns into accidental architecture.
+This document is the current architectural contract of Qiven Foundation
+(replaced 2026-09-26 per the accepted qiven-docs PR4 audit; the bootstrap
+original with its amendments is preserved verbatim at
+`docs/legacy/architecture/foundation-bootstrap-and-amendments-2026-09-25.md`).
+Accepted Context decisions it executes: ADR-0024 (semantic ownership over
+consumer count), ADR-0008 (explicit ownership/failure/allocation),
+ADR-0009 (separate representation boundaries), ADR-0017 (semantic layering).
 
 ## 1. Mission
 
-Qiven Foundation provides low-level, reusable C++ building blocks for the Qiven ecosystem.
+Qiven Foundation provides low-level, reusable C++ building blocks for the
+Qiven ecosystem: code that must remain portable, predictable, testable,
+explicit about cost and failure, and suitable for performance-sensitive
+systems.
 
-A component belongs here only when it is broadly useful below product or domain layers and can be implemented without
-depending on those layers.
+Foundation is not a miscellaneous `utils` repository, not a home for product
+or domain logic, not a wrapper around every OS/standard-library facility,
+not a place to hide expensive work behind convenient APIs, and not a
+compatibility layer for preserving bad historical abstractions.
 
-Foundation should optimize for:
+## 2. Admission: semantic owner and first real consumer
 
-- predictable cost;
-- explicit ownership;
-- portability;
-- testability;
-- low dependency weight;
-- clear failure behavior;
-- long-term maintainability.
+Admission is decided by semantic ownership, not by consumer count or
+minimal-primitive-count as a proxy for discipline (ADR-0024; ADR-0007's
+wait-for-broad-demand threshold is superseded).
 
-## 2. Non-goals
-
-Foundation is not:
-
-- a miscellaneous `utils` repository;
-- a home for product or domain logic;
-- a wrapper around every operating-system or standard-library facility;
-- a place to hide expensive work behind convenient APIs;
-- a compatibility layer for preserving bad historical abstractions.
+1. **Admission by semantic owner and first real consumer.** Before a
+   dependent implementation, list its invariants, owner, lifetime, failure
+   channel, bounds, concurrency, platform cases, and observable resource
+   cost. Place a stable, product-independent semantic operation in
+   Foundation if Foundation owns it — even with one consumer, and even if
+   it composes multiple primitives, owns memory, or wraps an OS operation.
+   Product policy, cognition-specific admission, transaction policy and
+   process supervision remain above Foundation; an unknown contract calls
+   for a bounded disposable probe with an explicit falsifier.
+2. **Complete the admitted operation.** A lower API that exposes only
+   `ByteCursor`/`ByteWriter` primitives is complete for borrowed bounded
+   cursors, not for an owning bounded growing builder (the admitted,
+   unlanded `byte_builder` gap in the capability inventory). Likewise a
+   lexical path parser is not proof of filesystem authorization. For each
+   admitted consumer, either implement the owned/bounded composition at
+   its lower semantic owner with explicit cost/failure/limit, or record
+   why the needed semantics belong to a named higher layer. A general ban
+   on "high-level encapsulation" is rejected; no abstract maximum
+   abstraction height governs admission. Hidden expensive work is still
+   prohibited: allocation, filesystem I/O, locking and failure stay
+   observable in the API.
+3. **Public-contract and consumer proof.** Publish an operation contract
+   and exact source baseline before the first dependent change. Lower unit
+   tests cover malicious/boundary input and representation/lifetime cases;
+   consumer integration tests compile/link the exact lower revision and
+   exercise the real call path, including a negative test against the
+   previous defect; Windows-native alias/reparse/path cases are tested on
+   Windows when relevant. Receipts record the **same candidate SHAs** and
+   show which hand-coded upper path was removed. A Foundation-only green
+   test does not close an upper-layer boundary.
+4. **Invariant-preserving boundaries.** Downward dependencies only;
+   explicit lifetime/allocator provenance; checked arithmetic; deliberate
+   platform isolation; no-exception consumers remain supportable. A public
+   C++ type cannot silently authorize a path, define a wire frame, or make
+   another process obey it. If a security or transaction policy spans two
+   frames or layers, the policy's owning layer publishes the whole
+   operation and Foundation supplies only semantically lower pieces.
+5. **Discovery and enforcement.** The active README, AGENTS entry and
+   capability inventory point to this document and the accepted Context
+   decisions. Machine-readable capability rows distinguish `landed`,
+   `admitted-not-yet-landed` and `historical`, and name the header,
+   contract, consumer and pinned proof; a design proposal is never
+   presented as a delivered header.
 
 ## 3. Dependency law
 
-Dependencies point downward.
-
-Public Foundation code may depend on:
-
-1. the C++ standard library;
-2. lower-level Qiven Foundation components;
-3. operating-system primitives behind explicit platform boundaries.
-
-Foundation must not depend on higher-level Qiven repositories such as runtime, geometry, graphics, CAD, networking, or
-applications.
-
-Third-party dependencies are not forbidden, but adding one to Foundation requires a specific architectural justification.
-The default is no third-party dependency.
-
-Circular dependencies between Foundation modules are forbidden.
+Dependencies point downward. Public Foundation code may depend on: the C++
+standard library; lower-level Foundation components; operating-system
+primitives behind explicit platform boundaries. Foundation must not depend
+on higher-level Qiven repositories. Third-party dependencies require a
+specific architectural justification; the default is none. Circular
+dependencies between Foundation modules are forbidden.
 
 ## 4. Namespace law
 
-The C++ root namespace is:
-
-```cpp
-qiven::
-```
-
-Foundation does not introduce a `qiven::foundation` namespace. Public symbols should live in the shortest namespace that
-communicates their real semantic domain.
-
-Examples:
-
-```cpp
-qiven::ByteCursor
-qiven::memory::LinearArena
-qiven::sync::Mutex
-```
-
-`detail` namespaces are implementation details and are not API contracts.
-
-The CMake target namespace is separate from the C++ namespace. The Foundation target is:
-
-```cmake
-qiven::foundation
-```
+The C++ root namespace is `qiven::`. Foundation does not introduce a
+`qiven::foundation` namespace; public symbols live in the shortest
+namespace that communicates their real semantic domain. `detail`
+namespaces are implementation details, not API contracts. The CMake target
+is `qiven::foundation`.
 
 ## 5. Public and private boundaries
 
-Public headers live under:
-
-```text
-include/qiven/
-```
-
-Implementation files and private headers live under:
-
-```text
-src/
-```
-
-A public header must be self-contained: including it in an otherwise empty translation unit must compile.
-
-Public headers must not require consumers to know private directory layout.
+Public headers live under `include/qiven/`; implementation and private
+headers under `src/`. A public header must be self-contained: including it
+in an otherwise empty translation unit must compile.
 
 ## 6. Language and toolchain baseline
 
-The initial language baseline is C++20.
+C++20. Buildable with mainstream MSVC, Clang, and GCC; exact minimum
+versions are a CI contract recorded only when verified. Compiler extensions
+are not part of the portable API unless isolated behind an explicit layer.
 
-Qiven should remain buildable with mainstream MSVC, Clang, and GCC toolchains. Exact minimum compiler versions are a CI
-contract and should be recorded only when CI continuously verifies them.
+## 7. Error handling and arithmetic
 
-Compiler extensions are not part of the portable API unless isolated behind an explicit compiler or platform layer.
+Low-level public APIs make failure visible in their signatures. Exceptions
+are not required for ordinary control flow; no-exception consumers remain
+supportable. The common vocabulary is `qiven::Result<T, Reason>`
+(`result.hpp`): holds exactly one of a success value or a typed reason,
+defaults the reason to `qiven::Error`, allows domain substitution,
+`[[nodiscard]]`, no allocation/throwing in its own operations, misuse of
+`value()`/`reason()` is a programming error (`QIVEN_ASSERT`); copy
+operations exist only while both alternatives are copy-constructible.
+(The design history of the `Result<void>` specialization is preserved at
+`docs/legacy/design/result-void.md`.)
 
-## 7. Error handling
-
-Low-level public APIs should make failure visible in their signatures.
-
-Exceptions must not be required for ordinary Foundation control flow. Foundation should remain capable of supporting
-no-exception consumers.
-
-A concrete result/status abstraction will be designed before APIs need one rather than invented ad hoc by each module.
-
-The common result vocabulary is `qiven::Result<T, Reason>` (`result.hpp`), landed at its OBL-D3F7B2 trigger in the
-Runtime RCA-0 foundation batch (2026-09-21). It holds exactly one of a success value or a typed reason, defaults the
-reason to `qiven::Error`, and lets a domain layer substitute its own typed reason (enum or small struct) instead of
-inventing a local result shape. `Result` is `[[nodiscard]]` at the type level, performs no allocation in any of its own
-operations, never throws from its own operations, and treats `value()`/`reason()` misuse as a programming error
-(`QIVEN_ASSERT`). Copy operations exist only while both alternatives are copy-constructible; a move-only value type
-yields a move-only `Result`.
-
-Arithmetic that derives byte counts, capacities, offsets, or externally controlled lengths must not silently wrap when
-overflow would change allocation or bounds semantics. Checked arithmetic reports overflow or underflow explicitly. Saturating
-or intentionally wrapping arithmetic, if introduced, must use distinct APIs because those are different contracts.
-
-Integer conversions must not silently change allocation or bounds semantics when the source value may be unrepresentable in
-the destination type. `checked_integer_cast` reports representability failure. An unchecked integer cast requires either a
-prior proof that the value is representable or an explicit contract that the conversion is intentionally lossy.
+Arithmetic that derives byte counts, capacities, offsets, or externally
+controlled lengths must not silently wrap: checked arithmetic reports
+overflow/underflow explicitly; saturating or intentionally wrapping
+arithmetic uses distinct APIs. Integer conversions that may be
+unrepresentable use `checked_integer_cast`; an unchecked cast requires a
+prior proof or an explicit lossy contract.
 
 ## 8. Memory and ownership
 
-Ownership must be visible.
+Ownership must be visible. Primitive APIs avoid hidden dynamic allocation
+the caller cannot reason about. The allocator boundary is
+`qiven::memory::AllocatorRef` (non-owning, type-erased; backend outlives
+every reference). Raw allocations always carry size and non-zero
+power-of-two alignment; failure returns `nullptr`; zero-size canonicalizes
+to `nullptr`. `qiven::memory::Layout` is a validated size+alignment value.
+Deallocation of `nullptr` is a no-op; non-null pointers return to the same
+backend with the same size/alignment. No mutable process-global default
+allocator. `SystemAllocator` is one hosted backend; `LinearArena` is a
+non-owning fixed-capacity bump allocator (reset is bulk reclamation; not
+thread-safe); `OwnedAllocation` is a move-only raw-storage owner;
+`OwnedObject<T>`/`OwnedArray<T>` own live objects with non-throwing
+construction/destruction and `std::nullopt` failure representation.
 
-Primitive APIs should avoid hidden dynamic allocation where the caller cannot reason about its cost or lifetime. Components
-that own dynamic storage should expose enough semantics for allocation strategy and lifetime to be understood.
+## 9. Representation and boundary law
 
-The allocator boundary is `qiven::memory::AllocatorRef`, a non-owning type-erased reference to an allocator backend. The
-backend object must outlive every `AllocatorRef` that refers to it. The reference itself owns no memory and performs no
-allocation while dispatching. AllocatorRef accepts either a validated `Layout` or an explicit size and alignment at its
-frontend; allocator backends continue to receive separate size and alignment values.
+An in-memory C++ representation is local unless an explicit boundary
+contract says otherwise. Raw pointers, function pointers and process
+addresses are process-local capabilities. Cross-process communication
+requires an explicit transferable representation; shared-memory structures
+must not depend on absolute process-local pointers; network and persistent
+formats define their own widths, byte order, compatibility and versioning.
+Endian codecs explicitly convert between fixed-width values and bytes,
+host-endian-independent, non-throwing, allocation-free. A Foundation
+source-level API is not automatically a module ABI, IPC representation,
+wire format, or persistent format (ADR-0009). `std::span` is the
+non-owning bounded view vocabulary. `qiven::ByteCursor` consumes immutable
+bytes non-owningly; `qiven::ByteWriter` reserves bounded mutable ranges
+non-owningly (the owning growing builder is the admitted `byte_builder`
+gap, not yet landed).
 
-Raw allocation requests always carry both size and alignment. Alignment is a non-zero power of two. Allocation failure is
-reported by returning `nullptr`; exceptions and process-global out-of-memory handlers are not part of the primitive contract.
-A zero-size allocation is canonicalized to `nullptr` without calling the backend.
+## 10. ABI policy
 
-`qiven::memory::Layout` is a validated value containing a byte size and a non-zero power-of-two alignment. A layout for a
-complete object type uses that type's `sizeof` and `alignof`; an array layout uses the checked product of element size and
-count without adding padding or changing element stride.
+Before 1.0, no stable C++ binary ABI is promised. Binary compatibility
+boundaries are introduced intentionally where a real distribution or
+plugin requirement exists.
 
-Deallocation of `nullptr` is a no-op. A non-null pointer must be returned to the same allocator backend with the same size
-and alignment used for the successful allocation request.
+## 11. Platform policy
 
-Foundation does not provide a mutable process-global default allocator. Concrete allocators define their own ownership,
-lifetime, and thread-safety semantics.
+Desktop/server platforms: Windows, Linux, macOS. x86-64 is the baseline;
+ARM64 is a first-class direction whose support becomes a contract only
+when actually built and tested by dispatched CI runs. The CI workflow is
+**explicit-dispatch** (`workflow_dispatch`): a dispatched run verifies
+Windows MSVC, Ubuntu GCC/Clang, and macOS x64/ARM64 configurations in
+Debug and Release, plus an Ubuntu/Clang no-exceptions/no-RTTI contract
+build under ASan/UBSan. These describe what a dispatched run verifies —
+they are not a continuous-verification claim. Hosted-runner compiler
+versions are not minimum-version promises. Platform-specific code is
+isolated from portable code.
 
-`qiven::memory::SystemAllocator` is one hosted-platform backend for this protocol, not the foundation of the allocator model.
-Non-hosted environments such as bare-metal or RTOS targets may provide allocator backends without a system allocator.
+## 12. Testing law
 
-`qiven::memory::LinearArena` is a non-owning fixed-capacity bump allocator over caller-provided storage. Individual
-`deallocate` calls do not reclaim space; `reset` performs bulk reclamation. Resetting an arena does not run object destructors,
-so object lifetime remains the caller's responsibility. The arena is not thread-safe.
+Every public component requires tests for its contract, including boundary
+and failure cases. A bug fix normally adds a regression test (for
+defect-bearing contracts: old-fail/new-pass discrimination per the Devkit
+testing standard). Sanitizers, static analysis and platform validation
+belong in the pipeline, not the runtime dependencies.
 
-The allocator protocol does not require immediate or individual reclamation. A backend may defer reclamation or make
-`deallocate` a no-op when its lifetime model is explicit.
+## 13. Development environment
 
-`qiven::memory::OwnedAllocation` is a move-only owner of raw allocator storage. It retains the allocator reference, pointer,
-and `Layout` required to return the allocation through its originating backend. The allocator backend must outlive the owner.
-Allocation failure is represented separately from a successful zero-size allocation, and ownership transfer leaves the source
-empty with layout `{0, 1}`. OwnedAllocation manages raw storage only; it does not construct or destroy C++ objects in that
-storage.
+CMake is the build-system source of truth; IDE project files are outputs.
+Visual Studio 2022 is a first-class Windows environment; shared
+configuration lives in `CMakePresets.json` and convenience tooling
+delegates to presets. Dependency resolution is workspace-resolved (the
+control-repository lock; see the README build section). IDE convenience
+must not compromise command-line, CI, or non-Windows builds.
 
-`qiven::memory::OwnedObject<T>` owns exactly one live object in storage obtained through the Foundation allocator model.
-Construction and destruction must be non-throwing, and allocation failure is represented by `std::nullopt`. Moving ownership
-does not move the `T` object. Destruction of `T` occurs before its raw storage is deallocated.
+## 14. Change rule
 
-`qiven::memory::OwnedArray<T>` owns a contiguous sequence of live, value-initialized `T` objects in storage described by
-`Layout::array<T>`. Construction and destruction are non-throwing; layout or allocation failure is represented by
-`std::nullopt`, while a zero count succeeds without allocating. Moving ownership does not move the elements, and every element
-is destroyed before the raw storage is deallocated.
+Before a new capability enters this repository, ask (per §2):
 
-## 9. RTTI and runtime type machinery
+1. Is Foundation the natural semantic owner (ADR-0024), independent of
+   consumer count?
+2. Can its ownership, failure behavior, bounds, concurrency and observable
+   cost be made explicit?
+3. Does its dependency set remain one every higher layer can inherit?
+4. Is the contract more stable than the use case that motivated it?
+5. Would the capability carry higher-level policy that belongs in a layer
+   above?
 
-Foundation APIs must not require RTTI for their core semantics.
-
-Type erasure or runtime type identification, when genuinely needed, should be explicit and local rather than an ambient
-dependency of the entire library.
-
-## 10. Representation and boundary law
-
-An in-memory C++ representation is local unless an explicit boundary contract says otherwise. Raw pointers, function
-pointers, and process addresses are process-local capabilities and are not transferable identities.
-
-Inline, template, or static object identity must not be used as cross-module identity. C++ objects that carry callbacks or
-module-owned addresses, including `AllocatorRef`, must not outlive the code and state they reference.
-
-Cross-process communication requires an explicit transferable representation. Shared-memory structures must not depend on
-absolute process-local pointers when mappings may differ. Network and persistent formats must define their own representation,
-including integer widths, byte order where relevant, compatibility, and versioning.
-
-Transferable integer fields use explicit widths and explicit byte order where the format requires it. Platform-sized types
-such as `usize` and `isize`, raw pointers, and native handles are not portable wire or persistent representations. Endian
-decoding and encoding explicitly convert between fixed-width integer values and bytes without treating byte storage as a
-native C++ object. Unsigned 16-, 32-, and 64-bit encoding requires an exactly sized destination and returns false without
-modifying any bytes on size mismatch. Encoding is constexpr and non-throwing, performs no allocation or synchronization,
-and is independent of host byte order and destination alignment.
-
-A Foundation source-level C++ API is not automatically a module ABI, IPC representation, wire format, or persistent format.
-Those boundaries are designed explicitly rather than inferred from object layout.
-
-Foundation uses `std::span` for non-owning contiguous bounded views rather than duplicating that abstraction. Offsets and
-counts derived from external or otherwise untrusted data must be validated before calling APIs whose range validity is a
-precondition. After validation, bounded views should be preferred over raw pointer-and-length pairs where they express the
-required semantics.
-
-`qiven::ByteCursor` provides non-owning sequential consumption of immutable bytes. The source storage must outlive the cursor.
-A failed consumption attempt does not advance the cursor, and copying a cursor creates an independent cursor position over the
-same storage. ByteCursor does not interpret integer encoding, endianness, object layout, or protocol semantics.
-
-qiven::ByteWriter reserves bounded mutable byte ranges sequentially without owning storage. The backing storage must
-outlive the writer and every returned span. Reservations advance only on success; over-capacity requests return
-std::nullopt without advancing, and zero-size reservations always succeed without advancing. Remaining bytes are the
-unwritten suffix. Copies share storage but advance independently. ByteWriter performs no allocation or synchronization,
-throws no exceptions, and does not encode typed values or interpret protocols.
-
-## 11. ABI policy
-
-Before 1.0, Qiven Foundation does not promise a stable C++ binary ABI.
-
-The priority is a clean source-level architecture. Binary compatibility boundaries should be introduced intentionally where
-a real distribution or plugin requirement exists.
-
-## 12. Platform policy
-
-The intended desktop/server platforms are:
-
-- Windows;
-- Linux;
-- macOS.
-
-x86-64 is the initial architecture baseline. ARM64 is a first-class target direction, but support becomes a contract only
-when it is continuously built and tested. macOS ARM64 is continuously built and tested; other ARM64 platform combinations
-become support contracts only when CI covers them.
-
-Continuous integration verifies Windows Server 2022 x64 with MSVC/Visual Studio 2022, Ubuntu 24.04 x64 with GCC and Clang,
-and macOS 15 on both x64 and ARM64 with AppleClang. Normal matrix entries configure, build, and test both Debug and Release.
-A separate Ubuntu/Clang contract build disables exceptions and RTTI and executes the tests under AddressSanitizer and
-UndefinedBehaviorSanitizer. Hosted-runner compiler versions validate current toolchains and are not minimum-version promises.
-
-Platform-specific code should be isolated so that portable code does not accumulate preprocessor branches for unrelated
-operating systems.
-
-## 13. Testing law
-
-Every public component requires tests for its contract, including boundary and failure cases.
-
-A bug fix should normally add a regression test.
-
-Tests may use more expensive diagnostics than production code. Sanitizers, static analysis, and platform-specific validation
-belong in the engineering pipeline even when they are not runtime dependencies.
-
-## 14. Development environment
-
-CMake is the build-system source of truth. IDE-specific generated project files are outputs, not hand-maintained project
-configuration.
-
-Visual Studio 2022 is a first-class Windows development environment. Qiven should provide a comfortable generate, build,
-test, and debug path without requiring developers to remember generator-specific command lines. Shared configuration belongs
-in `CMakePresets.json`; convenience scripts should delegate to those presets instead of duplicating configuration.
-
-IDE convenience must not compromise command-line, CI, or non-Windows builds.
-
-## 15. Change rule
-
-Convenience is not sufficient justification for adding a primitive to Foundation.
-
-Before a new subsystem enters this repository, ask:
-
-1. Is it genuinely foundational?
-2. Can its ownership and failure behavior be made explicit?
-3. Does it introduce a dependency that every higher layer will inherit?
-4. Is the abstraction more stable than the use case that motivated it?
-5. Would this be healthier in a higher-level repository?
-
-The repository should stay smaller than the set of things Qiven can build.
+"Broadly useful" and convenience alone are not admission reasons, and
+**they are not vetoes either**: one real consumer with clear semantic
+ownership suffices.

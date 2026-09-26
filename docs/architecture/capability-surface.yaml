@@ -20,7 +20,7 @@ primitives:
   - {name: checked_arithmetic, header: include/qiven/checked_arithmetic.hpp, semantics: overflow-checked arithmetic}
   - {name: checked_integer_cast, header: include/qiven/checked_integer_cast.hpp, semantics: bounds-checked integer casts}
   - {name: error, header: include/qiven/error.hpp, semantics: error_category + Error value type}
-  - {name: result, header: include/qiven/result.hpp, semantics: Result<T,Reason> incl. Result<void> partial specialization (named-union storage; docs/design/result-void.md)}
+  - {name: result, header: include/qiven/result.hpp, semantics: 'Result<T,Reason> incl. Result<void> partial specialization (named-union storage; contract in docs/architecture/foundation.md §7; design history at docs/legacy/design/result-void.md)'}
   - {name: hashing, header: include/qiven/hashing.hpp, semantics: fnv1a64 (non-cryptographic)}
   - {name: hashing_sha256, header: include/qiven/hashing_sha256.hpp, semantics: SHA256Core/SHA256Hasher}
   - {name: memory.allocator, header: include/qiven/memory/allocator.hpp, semantics: AllocatorRef type-erased non-owning allocator reference}
@@ -34,6 +34,8 @@ primitives:
 known_gaps:
   - {name: byte_builder, status: admitted-not-yet-landed, decision: 'qiven-runtime docs/design/rr0-byte-representation.md §2 (ADR-0024 admission 2026-09-24): owning growing bounded byte accumulator with scalar-put composition; lands with the RR-0 implementation batch'}
 laws:
-  - docs/architecture/foundation.md (mission, dependency law, §15 change/admission rule)
-  - docs/architecture/cpp-architecture.md (downward-only semantic ownership)
+  - docs/architecture/foundation.md (mission, admission by semantic owner + first real consumer, dependency/representation/testing law)
   - qiven-context decisions/ADR-0024.md (semantic ownership over consumer count)
+  - qiven-context decisions/ADR-0008.md (explicit ownership/failure/allocation)
+  - qiven-context decisions/ADR-0009.md (separate representation boundaries)
+  - 'historical: docs/legacy/architecture/cpp-architecture-2026-09-21.md (the former cross-repo normative snapshot; museumed 2026-09-26 — its downward-ownership law is carried by ADR-0024/0017 and the live foundation.md)'
