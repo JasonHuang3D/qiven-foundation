@@ -2,88 +2,95 @@
 
 Qiven Foundation is the low-level C++ foundation of the Qiven ecosystem.
 
-Its job is not to become a grab bag of utilities. It provides a small, disciplined base for code that must remain portable,
-predictable, testable, and suitable for performance-sensitive systems.
+Its job is not to become a grab bag of utilities. It provides a small,
+disciplined base for code that must remain portable, predictable,
+testable, explicit about cost and failure, and suitable for
+performance-sensitive systems. Admission is by semantic ownership and
+first real consumer (ADR-0024), not by consumer count.
 
 ## Status
 
-Qiven Foundation is in its bootstrap phase. Public APIs are not stable yet.
+Phase I landed (platform/compiler/config/contracts primitives, checked
+arithmetic/span/bounded byte views, allocator/memory model); adopted into
+the Devkit managed lifecycle; the workspace-resolved dependency provider
+for qiven-math / qiven-context-draft / qiven-runtime (WR-3 Profile E).
+Public APIs are not stable yet (no pre-1.0 C++ ABI promise). The admitted
+`byte_builder` gap (owning growing bounded byte accumulator) is recorded
+in the capability inventory as `admitted-not-yet-landed` and lands with
+the RR-0 implementation batch.
 
-The initial language baseline is **C++20**. The project is designed to support Windows, Linux, and macOS, with concrete
-compiler and architecture support locked down by CI as the implementation grows.
+The initial language baseline is **C++20**, designed for Windows, Linux
+and macOS (see the architecture document's platform policy for the
+explicit-dispatch CI claim scope).
 
 ## Build
 
 ### Visual Studio 2022 on Windows
 
-Visual Studio is a first-class development environment for Qiven Foundation. The Windows configuration is defined once in
-`CMakePresets.json`.
-
-Windows development uses the pinned tools from `qiven-toolchain-win`. By default, the toolchain repository is expected next
-to `qiven-foundation`. Set `QIVEN_TOOLCHAIN_ROOT` when using a different workspace layout.
-
-Since the WR-3 Foundation cutover, this repository resolves its dependencies through the workspace control lock
-(`qiven-workspace`) instead of consumer-local pins: the configure task routes through the workspace bootstrap, which
-supplies the adapter resolution file to CMake. Moving Foundation to a compatible revision is a control-lock transaction
-and requires no consumer re-pin commits.
-
-The Windows host still needs Git and Visual Studio 2022 with the C++ desktop development workload. CMake and clang-format
-come from `qiven-toolchain-win` rather than the host `PATH`.
-
-Generate the Visual Studio solution with:
+Windows development uses the pinned tools from `qiven-toolchain-win`
+(expected next to this repository by default; `QIVEN_TOOLCHAIN_ROOT`
+overrides). Since the WR-3 cutover, configure routes through the
+**workspace bootstrap** — the control lock (`qiven-workspace`) supplies
+the adapter resolution file to CMake, and moving Foundation to a
+compatible revision is a control-lock transaction with no consumer
+re-pin commits. The repository gate wraps the whole path:
 
 ```text
-tools\gen-vs2022-x64.cmd
+tools\qiven.cmd gate
 ```
 
-It generates `build/vs2022-x64/qiven-foundation.sln` without launching Visual Studio. When tests are enabled,
-`qiven-foundation-smoke` is configured as the Visual Studio startup project so `F5` starts an executable rather than the
-CMake `ALL_BUILD` target.
-
-Format tracked C/C++ sources with:
+Generate/build/test directly via the CMake presets (the configuration is
+defined once in `CMakePresets.json`):
 
 ```text
-tools\format.cmd
+python ..\qiven-workspace\bootstrap\qiven-bootstrap.py gate-configure --devkit ..\qiven-devkit --repo qiven-foundation --repo-root . --preset vs2022-x64 --cmake cmake
+cmake --build --preset vs2022-x64-debug
+ctest --preset vs2022-x64-debug
 ```
 
-Check formatting without modifying files with:
+(The earlier `tools\gen-vs2022-x64.cmd` instruction is retired: no such
+script exists in this tree; the preset path above is the actual entry.)
+
+Format tracked C/C++ sources with the repository tool (delegates to the
+toolchain's clang-format):
 
 ```text
-tools\format-check.cmd
+python tools\format_sources.py --fix
+python tools\format_sources.py --check
 ```
 
-Visual Studio should use `qiven-toolchain-win\bin\clang-format.exe` as its custom clang-format executable so IDE formatting
-and command-line formatting use the same version.
+Visual Studio should use `qiven-toolchain-win\bin\clang-format.exe` as its
+custom clang-format executable so IDE and command-line formatting agree.
+(The earlier `tools\format.cmd` / `tools\format-check.cmd` spellings are
+retired: those scripts do not exist in this tree.)
 
 ### Portable command line
 
-For other generators and platforms:
+For other generators and platforms (configure still needs the workspace
+adapter file):
 
 ```bash
-cmake -S . -B build
-cmake --build build
-ctest --test-dir build --output-on-failure
+python ../qiven-workspace/bootstrap/qiven-bootstrap.py gate-configure --devkit ../qiven-devkit --repo qiven-foundation --repo-root . --preset <preset> --cmake cmake
+cmake --build --preset <preset>-debug
+ctest --preset <preset>-debug
 ```
 
-When consumed from CMake, the project exposes:
+When consumed from CMake, the project exposes `qiven::foundation`; the C++
+root namespace is `qiven::` (intentionally no `qiven::foundation`
+namespace).
 
-```cmake
-qiven::foundation
-```
+## Architecture and entry points
 
-The C++ root namespace is:
-
-```cpp
-qiven::
-```
-
-There is intentionally no `qiven::foundation` C++ namespace. Foundation is the base layer of Qiven, not an extra namespace
-level that every caller should carry.
-
-## Architecture
-
-The architectural rules for this repository live in
-[`docs/architecture/foundation.md`](docs/architecture/foundation.md).
+- Current architecture contract: [`docs/architecture/foundation.md`](docs/architecture/foundation.md)
+- Capability inventory (landed / admitted-not-yet-landed rows with headers
+  and contracts): [`docs/architecture/capability-surface.yaml`](docs/architecture/capability-surface.yaml)
+- Engineering conventions and standards: canonical in the Devkit
+  (`JasonHuang3D/qiven-devkit`, ADR-0046; `docs/conventions/README.md` and
+  `docs/engineering/README.md` there).
+- Historical architecture/design documents (bootstrap architecture, the
+  cross-repo C++ architecture snapshot, error-handling design, the
+  context-draft distillation, the result-void design) are preserved under
+  [`docs/legacy/`](docs/legacy/) as labeled history — not current law.
 
 ## License
 

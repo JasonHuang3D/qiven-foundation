@@ -19,8 +19,9 @@
 //   exception thrown by T's or Reason's copy constructor.
 // - Misuse — value() on a failure, reason() on a success — is a caller
 //   programming error and trips QIVEN_ASSERT, not a recoverable channel
-//   (docs/architecture/error-handling.md: assertions are for programming
-//   errors, this type is for recoverable failures).
+//   (docs/architecture/foundation.md §7: assertions are for programming
+//   errors, this type is for recoverable failures; the older design note
+//   lives at docs/legacy/architecture/error-handling.md).
 // ============================================================================
 
 #include <qiven/contracts.hpp>

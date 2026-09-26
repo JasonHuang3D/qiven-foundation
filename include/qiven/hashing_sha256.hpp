@@ -4,9 +4,11 @@
 // hashing_sha256.hpp — integrity-grade SHA-256 digests (FIPS 180-4)
 //
 // SHA-256 is the content-integrity primitive for decision binding and
-// artifact identity (cpp-architecture §3.6). Non-cryptographic identity
-// hashing of runtime strings stays on fnv1a64 in hashing.hpp; the two are
-// different contracts and must not be substituted for each other.
+// artifact identity (frozen cpp architecture §3.6, preserved at
+// docs/legacy/architecture/cpp-architecture-2026-09-21.md). Non-
+// cryptographic identity hashing of runtime strings stays on fnv1a64 in
+// hashing.hpp; the two are different contracts and must not be
+// substituted for each other.
 //
 // The core is constexpr, so golden vectors pin the implementation at compile
 // time. The string_view overloads reinterpret bytes and are runtime-only.
