@@ -251,6 +251,22 @@ set_target_properties(
 
 add_test(NAME qiven-foundation.checked-span COMMAND qiven-foundation-checked-span)
 
+add_executable(qiven-foundation-byte-builder byte_builder.cpp)
+
+target_link_libraries(qiven-foundation-byte-builder PRIVATE qiven::foundation)
+qiven_enable_test_warnings(qiven-foundation-byte-builder)
+target_precompile_headers(qiven-foundation-byte-builder REUSE_FROM qiven-foundation)
+
+set_target_properties(
+    qiven-foundation-byte-builder
+    PROPERTIES
+        CXX_EXTENSIONS OFF
+        FOLDER "Tests"
+        VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+)
+
+add_test(NAME qiven-foundation.byte-builder COMMAND qiven-foundation-byte-builder)
+
 add_executable(qiven-foundation-byte-cursor byte_cursor.cpp)
 
 target_link_libraries(qiven-foundation-byte-cursor PRIVATE qiven::foundation)
@@ -369,6 +385,7 @@ add_library(
         headers/alignment.cpp
         headers/allocator.cpp
         headers/architecture.cpp
+        headers/byte_builder.cpp
         headers/byte_cursor.cpp
         headers/byte_writer.cpp
         headers/hashing.cpp

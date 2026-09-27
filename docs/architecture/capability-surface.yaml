@@ -14,6 +14,7 @@ primitives:
   - {name: platform, header: include/qiven/platform.hpp, semantics: platform identification macros}
   - {name: alignment, header: include/qiven/alignment.hpp, semantics: alignment helpers}
   - {name: byte_writer, header: include/qiven/byte_writer.hpp, semantics: NON-OWNING fixed-capacity write cursor (reserve-carving, optional-failure)}
+  - {name: byte_builder, header: include/qiven/byte_builder.hpp, semantics: OWNING growing bounded byte accumulator with LE/BE scalar-put composition (sticky append_status failure channel, lazy geometric growth, ADR-0024 admission record docs/architecture/byte-builder-admission.md; landed with the RR-0 batch 2026-09-28)}
   - {name: byte_cursor, header: include/qiven/byte_cursor.hpp, semantics: NON-OWNING bounded read cursor (take, optional-failure)}
   - {name: endian, header: include/qiven/endian.hpp, semantics: fixed-width LE/BE encode/decode u16/u32/u64 (bool/optional-returning, host-endian-independent)}
   - {name: checked_span, header: include/qiven/checked_span.hpp, semantics: optional-returning bounds-checked subspan}
@@ -31,8 +32,7 @@ primitives:
   - {name: memory.owned_object, header: include/qiven/memory/owned_object.hpp, semantics: move-only owning object}
   - {name: memory.observer, header: include/qiven/memory/observer.hpp, semantics: MemoryStats/AllocationObserver/ScopedMemoryWatch}
   - {name: memory.system_allocator, header: include/qiven/memory/system_allocator.hpp, semantics: system allocator adapter}
-known_gaps:
-  - {name: byte_builder, status: admitted-not-yet-landed, decision: 'qiven-runtime docs/design/rr0-byte-representation.md §2 (ADR-0024 admission 2026-09-24): owning growing bounded byte accumulator with scalar-put composition; lands with the RR-0 implementation batch'}
+known_gaps: []
 laws:
   - docs/architecture/foundation.md (mission, admission by semantic owner + first real consumer, dependency/representation/testing law)
   - qiven-context decisions/ADR-0024.md (semantic ownership over consumer count)
