@@ -50,7 +50,21 @@ public:
     ByteBuilder(const ByteBuilder&)            = delete;
     ByteBuilder& operator=(const ByteBuilder&) = delete;
 
-    ByteBuilder(ByteBuilder&&) noexcept = default;
+    ByteBuilder(ByteBuilder&& other) noexcept
+    :
+    allocator_(other.allocator_),
+    allocation_(std::move(other.allocation_)),
+    size_(other.size_),
+    max_capacity_(other.max_capacity_),
+    status_(other.status_)
+    {
+        // A moved-from builder is a valid inert empty (zero size, capacity
+        // and bound), never a stale-engaged optional with a pre-move size
+        // (bytes() would span a null block).
+        other.size_         = 0;
+        other.max_capacity_ = 0;
+        other.status_       = append_status::ok;
+    }
 
     ByteBuilder& operator=(ByteBuilder&& other) noexcept
     {
@@ -191,9 +205,12 @@ private:
         if (required > max_capacity_)
             return append_status::capacity_exceeded;
 
-        const usize doubled = capacity() * 2;
-        const usize wanted  = required > doubled ? required : doubled;
-        const usize target  = wanted > max_capacity_ ? max_capacity_ : wanted;
+        // Geometric growth, checked like every other size computation in
+        // the file (a wrapped double would degrade growth to exact-fit).
+        const auto doubled        = checked_mul(capacity(), usize { 2 });
+        const usize doubled_value = doubled.value_or(required);
+        const usize wanted        = required > doubled_value ? required : doubled_value;
+        const usize target        = wanted > max_capacity_ ? max_capacity_ : wanted;
 
         auto grown = memory::OwnedAllocation::try_allocate(allocator_, target, alignof(std::byte));
         if (!grown)

@@ -229,6 +229,18 @@ int main()
         if (builder->size() != 8 || builder->ok())
             return 38;
 
+        // Discriminating stickiness: on a FRESH max-16 builder, a 17-byte
+        // append (over the bound) latches capacity_exceeded; a following
+        // 1-byte put would SUCCEED on its own merits — only the latch can
+        // reject it.
+        auto fresh = ByteBuilder::try_create(AllocatorRef { system }, 16);
+        if (!fresh)
+            return 63;
+        if (fresh->append(view(std::array<std::byte, 17> {})) != append_status::capacity_exceeded)
+            return 64;
+        if (fresh->append(view(one)) != append_status::capacity_exceeded || fresh->size() != 0)
+            return 65;
+
         builder->reset();
         if (!builder->ok() || builder->size() != 0 || builder->capacity() != 8) // capacity retained
             return 39;
@@ -263,12 +275,23 @@ int main()
         allocator.fail = true;
         if (builder->append(view(std::array<std::byte, 64> {})) != append_status::allocation_failed)
             return 46;
-        if (builder->append_le_u16(9) != append_status::allocation_failed) // sticky
+
+        // Discriminating stickiness: this u16 put would SUCCEED on its own
+        // merits (4 + 2 <= 4096) — only the latched status can reject it.
+        if (builder->append_le_u16(9) != append_status::allocation_failed)
             return 47;
         if (builder->size() != 4) // failed appends consume nothing
             return 48;
 
+        // The latch outlives the allocator recovering (no reset): the same
+        // 64-byte append that just failed on allocation now fails ONLY
+        // because the status is still latched.
         allocator.fail = false;
+        if (builder->append(view(std::array<std::byte, 64> {})) != append_status::allocation_failed)
+            return 61;
+        if (builder->size() != 4)
+            return 62;
+
         builder->reset();
         if (builder->append(view(std::array<std::byte, 64> {})) != append_status::ok || builder->size() != 64)
             return 49;
@@ -286,7 +309,7 @@ int main()
         std::printf("[ OK ] allocation failure is explicit and sticky%s", eol.c_str());
     }
 
-    // ---- move semantics: bytes + limits transfer, source is reusable-empty ----
+    // ---- move semantics: bytes + limits transfer, source is a valid inert empty ----
     {
         SlotAllocator allocator;
         auto builder = ByteBuilder::try_create(AllocatorRef { allocator }, 128);
@@ -302,6 +325,14 @@ int main()
         if (moved.bytes()[0] != std::byte { 0x08 } || moved.bytes()[7] != std::byte { 0x0F })
             return 55;
 
+        // moved-from (construction): valid inert empty — zero size, clean
+        // status, zero capacity AND zero max bound (identical to a
+        // max-0 builder), safe empty span; usable only as an assignment
+        // target.
+        if (builder->size() != 0 || !builder->ok() || builder->capacity() != 0 ||
+            builder->max_capacity() != 0 || !builder->bytes().empty())
+            return 66;
+
         auto target = ByteBuilder::try_create(AllocatorRef { allocator }, 4);
         if (!target)
             return 56;
@@ -313,6 +344,11 @@ int main()
             return 58;
         if (target->bytes()[7] != std::byte { 0x0F })
             return 59;
+
+        // moved-from (assignment): same valid inert empty law
+        if (moved.size() != 0 || !moved.ok() || moved.capacity() != 0 || moved.max_capacity() != 0 ||
+            !moved.bytes().empty())
+            return 68;
 
         // self move-assign is guarded and changes nothing
         target = std::move(*target);
