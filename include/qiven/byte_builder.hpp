@@ -84,6 +84,12 @@ public:
         return *this;
     }
 
+    // Precondition: `bytes` must not reference storage owned by THIS
+    // builder (e.g. bytes() of itself). Growth replaces the block BEFORE
+    // the incoming bytes are copied, so a self-referencing span reads
+    // freed storage. Extract-then-append of the builder's own contents
+    // requires an intermediate copy at the call site. Scalar puts are
+    // immune (they encode into a local array first).
     [[nodiscard]] append_status append(std::span<const std::byte> bytes) noexcept
     {
         if (status_ != append_status::ok)

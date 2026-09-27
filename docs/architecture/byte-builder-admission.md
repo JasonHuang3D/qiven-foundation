@@ -24,8 +24,14 @@ accumulator with scalar-put composition:
   before the first append) and geometric (double, clamp to max); capacity
   is observable and monotonic non-decreasing between resets;
 - ownership via the Foundation allocator model
-  (`memory::AllocatorRef` + `memory::OwnedAllocation`); move-only;
-  scalar puts compose `endian.hpp` codecs (no second encoder).
+  (`memory::AllocatorRef` + `memory::OwnedAllocation`); move-only (a
+  moved-from builder is a valid inert empty: zero size, capacity and
+  bound); scalar puts compose `endian.hpp` codecs (no second encoder);
+- documented precondition: `append(bytes)` requires `bytes` to not
+  reference storage owned by the same builder — growth replaces the block
+  before the incoming bytes are copied, so a self-referencing span reads
+  freed storage; extract-then-append needs an intermediate copy at the
+  call site (scalar puts are immune by construction).
 
 ## First real consumers
 

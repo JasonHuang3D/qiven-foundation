@@ -350,9 +350,10 @@ int main()
             !moved.bytes().empty())
             return 68;
 
-        // self move-assign is guarded and changes nothing
+        // self move-assign is guarded and changes nothing (size, capacity,
+        // and contents all pinned)
         target = std::move(*target);
-        if (target->size() != 8)
+        if (target->size() != 8 || target->capacity() != 8 || target->bytes()[7] != std::byte { 0x0F })
             return 60;
 
         std::printf("[ OK ] move semantics transfer ownership%s", eol.c_str());
