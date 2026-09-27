@@ -347,6 +347,22 @@ set_target_properties(
 
 add_test(NAME qiven-foundation.hashing-sha256 COMMAND qiven-foundation-hashing-sha256)
 
+add_executable(qiven-foundation-crt-failure crt_failure.cpp)
+
+target_link_libraries(qiven-foundation-crt-failure PRIVATE qiven::foundation)
+qiven_enable_test_warnings(qiven-foundation-crt-failure)
+target_precompile_headers(qiven-foundation-crt-failure REUSE_FROM qiven-foundation)
+
+set_target_properties(
+    qiven-foundation-crt-failure
+    PROPERTIES
+        CXX_EXTENSIONS OFF
+        FOLDER "Tests"
+        VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+)
+
+add_test(NAME qiven-foundation.crt-failure COMMAND qiven-foundation-crt-failure)
+
 add_library(
     qiven-foundation-header-check
     OBJECT
@@ -365,6 +381,7 @@ add_library(
         headers/compiler.cpp
         headers/config.cpp
         headers/contracts.cpp
+        headers/crt_failure.cpp
         headers/endian.cpp
         headers/layout.cpp
         headers/linear_arena.cpp
