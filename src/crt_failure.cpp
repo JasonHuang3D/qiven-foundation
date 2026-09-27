@@ -8,16 +8,16 @@
 
 #if QIVEN_PLATFORM_WINDOWS
 
-#define WIN32_LEAN_AND_MEAN
-#define NOMINMAX
-#include <windows.h>
+    #define WIN32_LEAN_AND_MEAN
+    #define NOMINMAX
+    #include <windows.h>
 
-#include <crtdbg.h>
-#include <cstdint>
-#include <cstdio>
-#include <cstdlib>
-#include <cstring>
-#include <cwchar>
+    #include <crtdbg.h>
+    #include <cstdint>
+    #include <cstdio>
+    #include <cstdlib>
+    #include <cstring>
+    #include <cwchar>
 
 namespace qiven
 {
@@ -31,7 +31,7 @@ volatile LONG g_entered_fault_handler = 0;
 void write_all(HANDLE handle, const char* text) noexcept
 {
     const auto length = static_cast<DWORD>(std::strlen(text));
-    DWORD written = 0;
+    DWORD written     = 0;
     // Best effort: a failing evidence write must not mask the termination.
     WriteFile(handle, text, length, &written, nullptr);
 }
@@ -94,7 +94,7 @@ void install_headless_crt_failure_behavior()
     // dialog and dump path are both unwanted in headless execution).
     _set_abort_behavior(_WRITE_ABORT_MSG, _WRITE_ABORT_MSG | _CALL_REPORTFAULT);
 
-#if defined(_DEBUG)
+    #if defined(_DEBUG)
     // Reports that do not route through the invalid-parameter handler
     // (explicit _ASSERTE/_RPTn sites): debugger + stderr output only --
     // never the modal "Debug Assertion Failed" report path.
@@ -103,9 +103,9 @@ void install_headless_crt_failure_behavior()
     _CrtSetReportMode(_CRT_ERROR, _CRTDBG_MODE_DEBUG | _CRTDBG_MODE_FILE);
     _CrtSetReportFile(_CRT_ERROR, _CRTDBG_FILE_STDERR);
     _CrtSetReportMode(_CRT_WARN, _CRTDBG_MODE_DEBUG);
-#else
-    // Release: no report-mode surface exists; the handler above is the law.
-#endif
+    #else
+        // Release: no report-mode surface exists; the handler above is the law.
+    #endif
 }
 
 } // namespace qiven
