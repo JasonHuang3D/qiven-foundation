@@ -44,6 +44,7 @@ set(
     ${CMAKE_CURRENT_SOURCE_DIR}/include/qiven/compiler.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/qiven/config.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/qiven/contracts.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/qiven/crt_failure.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/qiven/endian.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/qiven/hashing_sha256.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/qiven/memory/allocator.hpp
@@ -61,6 +62,7 @@ set(
 set(
     QIVEN_FOUNDATION_PRIVATE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/src/contracts.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/crt_failure.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/memory/linear_arena.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/memory/owned_allocation.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/memory/system_allocator.cpp
