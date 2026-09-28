@@ -32,10 +32,12 @@ primitives:
   - {name: memory.owned_object, header: include/qiven/memory/owned_object.hpp, semantics: move-only owning object}
   - {name: memory.observer, header: include/qiven/memory/observer.hpp, semantics: MemoryStats/AllocationObserver/ScopedMemoryWatch}
   - {name: memory.system_allocator, header: include/qiven/memory/system_allocator.hpp, semantics: system allocator adapter}
-known_gaps: []
+known_gaps:
+  - {name: diag, status: admitted-not-yet-landed, decision: 'ADR-0059 + qiven-docs PR6 accepted 2026-09-29 (C++ diagnostics program): qiven::diag public contract - structured events, bounded producer encoding, process diagnostics initialization, crash-safe emergency evidence, capsule representation, platform-qualified crash client; F0 baseline at docs/architecture/cpp-diagnostics-f0-baseline.md; lands with I1/I2 after the I0 census/mechanism comparison'}
 laws:
-  - docs/architecture/foundation.md (mission, admission by semantic owner + first real consumer, dependency/representation/testing law)
+  - docs/architecture/foundation.md (mission, admission by semantic owner + first real consumer, dependency/representation/testing law; amended 2026-09-29 per ADR-0059 - evidence-based dependency admission, three-boundary ABI policy, platform/build clauses)
   - qiven-context decisions/ADR-0024.md (semantic ownership over consumer count)
   - qiven-context decisions/ADR-0008.md (explicit ownership/failure/allocation)
   - qiven-context decisions/ADR-0009.md (separate representation boundaries)
+  - qiven-context decisions/ADR-0059.md (C++ diagnostics infrastructure program + this repository's boundary amendment, 2026-09-29)
   - 'historical: docs/legacy/architecture/cpp-architecture-2026-09-21.md (the former cross-repo normative snapshot; museumed 2026-09-26 — its downward-ownership law is carried by ADR-0024/0017 and the live foundation.md)'
