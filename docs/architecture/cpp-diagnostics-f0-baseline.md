@@ -87,12 +87,13 @@ this baseline).
   every existing header")**: `CMakeLists.txt`'s
   `QIVEN_FOUNDATION_PUBLIC_HEADERS` file set enumerates only 23 of the
   27 public headers — `byte_builder.hpp`, `error.hpp`, `hashing.hpp`
-  and `memory/observer.hpp` are absent from the set (the first three
-  are PCH-included later in the same file; `memory/observer.hpp`
-  appears nowhere in it). Harmless to the current static build; a
-  future `install(FILES …)` over this set would silently drop four
-  public headers. F1's install/export work must reconcile the set
-  against the header census mechanically.
+  and `memory/observer.hpp` are absent from the set (`error.hpp` and
+  `hashing.hpp` are PCH-included later in the same file;
+  `byte_builder.hpp` and `memory/observer.hpp` appear nowhere in it).
+  Harmless to the current static build; a future `install(FILES …)`
+  over this set would silently drop four public headers. F1's
+  install/export work must reconcile the set against the header census
+  mechanically.
 - Real consumers today (repository-manifest declarations in the
   workspace control repository: qiven-runtime, qiven-context-draft and
   qiven-math each declare a `first-party-source` dependency on
