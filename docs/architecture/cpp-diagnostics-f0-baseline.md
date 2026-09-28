@@ -27,8 +27,9 @@ classes and the decision vehicle only.
 
 ## 2. Source API inventory (public surface at the baseline)
 
-All public headers live under `include/qiven/` (26 headers; every one
-self-contained per foundation.md §5). Semantic groups:
+All public headers live under `include/qiven/` (27 headers: 19 at the
+root plus 8 under `memory/`; every one self-contained per
+foundation.md §5). Semantic groups:
 
 - **Vocabulary/platform**: `types.hpp`, `platform.hpp`, `compiler.hpp`,
   `config.hpp`, `architecture.hpp`, `alignment.hpp`.
@@ -81,10 +82,13 @@ this baseline).
   introduces explicit export/hide, relocatable packaging and the
   external installed-package consumer probes (PR6 doc 02 section 4
   F1).
-- Real consumers today (workspace lock edges, all first-party-source,
-  all lockstep): qiven-runtime, qiven-context-draft, qiven-math — each
-  resolves Foundation at its locked node in the WorkspaceGeneration and
-  rebuilds against it. No third-party or out-of-tree consumer exists.
+- Real consumers today (repository-manifest declarations in the
+  workspace control repository: qiven-runtime, qiven-context-draft and
+  qiven-math each declare a `first-party-source` dependency on
+  `qiven-foundation` under contract `qiven-foundation-v1`): all three
+  are lockstep first-party consumers that resolve Foundation at its
+  locked node in the WorkspaceGeneration and rebuild against it. No
+  third-party or out-of-tree consumer exists.
 
 ## 4. Process-global state census (complete at the baseline)
 

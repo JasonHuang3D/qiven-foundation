@@ -269,9 +269,11 @@ QIVEN_EXPORT int32_t QIVEN_CALL qiven_diag_query_api(
 
 The payload is a bounded, versioned borrowed view valid through the
 call; an asynchronous host copies or publishes it under the same
-backpressure contract. ABI versions are scoped per platform and
-architecture, with an explicit major-version refusal and tested
-minor-version extension behavior.
+backpressure contract. A provider behind this facade is private. ABI
+versions are scoped per platform and architecture, with an explicit
+major-version refusal and tested minor-version extension behavior.
+This single bounded call or measured batch path keeps per-field
+FFI/allocator traffic out of the hot loop.
 
 ## 11. Platform policy
 
@@ -295,7 +297,10 @@ fatal signal handler obeys its async-signal-safety contract; Windows
 handler assumptions cannot be copied into it. Each OS/architecture
 advertises actual capture capabilities and grades in a versioned
 capability matrix. No platform is labeled crash-covered merely because
-the common headers compile or a Windows probe passes.
+the common headers compile or a Windows probe passes. A support claim
+requires a dispatched build and consumer test at the precise Windows,
+Linux and macOS candidate revisions and architectures actually
+claimed.
 
 ## 12. Testing law
 
