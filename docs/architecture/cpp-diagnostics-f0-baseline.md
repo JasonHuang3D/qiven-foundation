@@ -86,10 +86,11 @@ this baseline).
   wave; not fixed at F0 per PR6 doc 02 section 4 "no need to refactor
   every existing header")**: `CMakeLists.txt`'s
   `QIVEN_FOUNDATION_PUBLIC_HEADERS` file set enumerates only 23 of the
-  27 public headers (`byte_builder.hpp`, `error.hpp`, `hashing.hpp`
-  absent from the set while `error.hpp`/`hashing.hpp` are PCH-included
-  later in the same file). Harmless to the current static build; a
-  future `install(FILES …)` over this set would silently drop three
+  27 public headers — `byte_builder.hpp`, `error.hpp`, `hashing.hpp`
+  and `memory/observer.hpp` are absent from the set (the first three
+  are PCH-included later in the same file; `memory/observer.hpp`
+  appears nowhere in it). Harmless to the current static build; a
+  future `install(FILES …)` over this set would silently drop four
   public headers. F1's install/export work must reconcile the set
   against the header census mechanically.
 - Real consumers today (repository-manifest declarations in the
