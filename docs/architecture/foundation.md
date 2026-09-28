@@ -3,10 +3,17 @@
 This document is the current architectural contract of Qiven Foundation
 (replaced 2026-09-26 per the accepted qiven-docs PR4 audit; the bootstrap
 original with its amendments is preserved verbatim at
-`docs/legacy/architecture/foundation-bootstrap-and-amendments-2026-09-25.md`).
+`docs/legacy/architecture/foundation-bootstrap-and-amendments-2026-09-25.md`;
+targeted amendment 2026-09-29 per the accepted qiven-docs PR6 companion
+and ADR-0059 — the Section 3 dependency default, the Section 9
+representation appendix, the Section 10 ABI policy and the Sections
+11/13 platform/build clauses; the pre-amendment text at commit
+`5e3e018` is preserved by git history).
 Accepted Context decisions it executes: ADR-0024 (semantic ownership over
 consumer count), ADR-0008 (explicit ownership/failure/allocation),
-ADR-0009 (separate representation boundaries), ADR-0017 (semantic layering).
+ADR-0009 (separate representation boundaries), ADR-0017 (semantic
+layering), ADR-0059 (C++ diagnostics infrastructure program and this
+boundary amendment).
 
 ## 1. Mission
 
@@ -37,8 +44,9 @@ wait-for-broad-demand threshold is superseded).
    for a bounded disposable probe with an explicit falsifier.
 2. **Complete the admitted operation.** A lower API that exposes only
    `ByteCursor`/`ByteWriter` primitives is complete for borrowed bounded
-   cursors, not for an owning bounded growing builder (the admitted,
-   unlanded `byte_builder` gap in the capability inventory). Likewise a
+   cursors, not for an owning bounded growing builder (`byte_builder`,
+   admitted via `docs/architecture/byte-builder-admission.md` and landed
+   2026-09-28 with the RR-0 batch). Likewise a
    lexical path parser is not proof of filesystem authorization. For each
    admitted consumer, either implement the owned/bounded composition at
    its lower semantic owner with explicit cost/failure/limit, or record
@@ -75,9 +83,24 @@ wait-for-broad-demand threshold is superseded).
 Dependencies point downward. Public Foundation code may depend on: the C++
 standard library; lower-level Foundation components; operating-system
 primitives behind explicit platform boundaries. Foundation must not depend
-on higher-level Qiven repositories. Third-party dependencies require a
-specific architectural justification; the default is none. Circular
-dependencies between Foundation modules are forbidden.
+on higher-level Qiven repositories. Circular dependencies between
+Foundation modules are forbidden.
+
+Third-party dependencies are admitted by recorded evidence, with no
+directional default. Foundation owns stable, product-independent
+semantics. A private implementation may use a pinned third-party
+component, a platform facility or Qiven code after an I0-style
+comparison of required coverage, correctness, latency and worst-case
+cost, security/maintenance history, compiler/platform support,
+deployment/offline cost, provenance and license/NOTICE obligations.
+Dependency admission is a recorded decision for the exact consumer and
+build closure, with a provider-independent public contract, tests
+against plausible failures and a revisit trigger. Neither using a mature
+library nor rewriting it is automatically preferred. Public headers and
+independently versioned ABI tables may not expose provider-specific
+types. This changes a default preference, not the ownership test in
+Section 2 or an accepted Context representation rule; the governing
+acceptance transaction is ADR-0059 (qiven-docs PR6, accepted 2026-09-29).
 
 ## 4. Namespace law
 
@@ -149,14 +172,108 @@ source-level API is not automatically a module ABI, IPC representation,
 wire format, or persistent format (ADR-0009). `std::span` is the
 non-owning bounded view vocabulary. `qiven::ByteCursor` consumes immutable
 bytes non-owningly; `qiven::ByteWriter` reserves bounded mutable ranges
-non-owningly (the owning growing builder is the admitted `byte_builder`
-gap, not yet landed).
+non-owningly; `qiven::ByteBuilder` is the owning growing builder
+(`byte_builder.hpp`, landed 2026-09-28; admission record at
+`docs/architecture/byte-builder-admission.md`).
+
+A C++ type, including `Result<T>`, `std::span`, `AllocatorRef` and their
+template/function-pointer implementation details, is a source-level
+vocabulary, not a stable independently versioned binary layout. Moving a
+function into a DLL/.so/.dylib does not turn these types into a portable
+module ABI. Process-global services are owned by one host instance even
+when its clients reside in several loaded images. Shared memory, module
+calls, persistent artifacts and wire/IPC messages each declare separate
+lifetime, width, alignment, version and validation rules.
 
 ## 10. ABI policy
 
-Before 1.0, no stable C++ binary ABI is promised. Binary compatibility
-boundaries are introduced intentionally where a real distribution or
-plugin requirement exists.
+Foundation defines three intentionally different contracts (the table is
+the summary; the clauses below are the law):
+
+| Boundary | Intended consumer | Compatibility promise |
+| --- | --- | --- |
+| C++ source API | Rebuilt Qiven components, static or lockstep shared linkage | C++20 source contract; binary participants use one verified toolchain/runtime/build tuple and are released together. |
+| Independently versioned in-process module ABI | A DLL/.so/.dylib or plugin that may be built or updated separately | Narrow, versioned C-callable function table with opaque handles and explicit ownership; per-platform binary and architecture compatibility, never one binary for all OSes. |
+| Cross-process/crash artifact format | Inspector, supervisor and forensic tools | Independently versioned, pointer-free representation with validation; it is neither the C++ object layout nor the in-process C ABI. |
+
+Foundation supports static linking and a lockstep shared-library build
+from a common source contract. For the shared build, explicitly export
+only intended symbols, hide private symbols where supported, publish a
+relocatable CMake package and record the required compiler, C++
+standard library, CRT, architecture, build configuration and dependency
+closure. A lockstep C++ shared consumer is rebuilt and released against
+the same qualified tuple; there is no general promise that arbitrary
+C++ classes or templates remain binary-compatible across independent
+upgrades.
+
+Where independently built or upgraded modules are required, define a
+separate, small C-callable ABI at the semantic owner's boundary. Use
+fixed-width scalar fields, explicit calling convention and
+packing/alignment contract, sized/versioned structs, feature/version
+negotiation, opaque handles or borrowed buffers, bounded lengths and
+explicit status codes. Never pass STL types, `Result<T>`, exceptions,
+RTTI-dependent objects, C++ allocators, ownership-bearing file/CRT
+objects or an unversioned C++ vtable across that boundary. Pointers are
+valid only inside the current process and for the documented
+call/handle lifetime. Allocate and release across a boundary through
+the same owner or caller-provided storage; all callbacks and
+module-owned objects are quiesced before unloading their code.
+
+A process-wide diagnostic installer and fatal handler are owned by one
+host service. Loaded modules obtain a capability handle or function
+table and emit records through that owner; they do not each install
+CRT/signal/Mach handlers, start an independent writer, or instantiate a
+private crash ring. The crash service itself stays loaded for the
+process lifetime once handlers may reference its code; hot reload is
+not implied by shared linkage. Multiple static copies of the process
+service in one process are a configuration error.
+
+The first independently versioned ABI slice is the diagnostics client,
+once a real module consumer and compatibility tests exist. Other
+Foundation operations retain their C++ source API unless a separately
+justified module boundary needs them. Building Foundation as a shared
+library does not by itself give the C++ API an independently stable
+ABI; conversely, supporting an independent plugin does not require
+turning every Foundation template or value type into a C facade.
+
+The C-callable API may be implemented as an exported
+version-negotiating entrypoint returning a sized function table. The
+first diagnostics slice could take this **illustrative** shape — not a
+landed contract; the exact names, representation, maximum length,
+thread-safety and registration/unload mechanics are fixed by the first
+implementation contract — with `QIVEN_CALL` and `QIVEN_EXPORT` defined
+per platform:
+
+~~~c
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+typedef struct {
+    uint32_t size;
+    uint32_t abi_major;
+    uint32_t abi_minor;
+    void* host_context;
+    int32_t (QIVEN_CALL *emit)(void* host_context,
+                               const uint8_t* bounded_event,
+                               uint32_t byte_count);
+} QivenDiagApiV1;
+
+QIVEN_EXPORT int32_t QIVEN_CALL qiven_diag_query_api(
+    uint32_t requested_major, uint32_t caller_size, QivenDiagApiV1* out);
+
+#ifdef __cplusplus
+}
+#endif
+~~~
+
+The payload is a bounded, versioned borrowed view valid through the
+call; an asynchronous host copies or publishes it under the same
+backpressure contract. A provider behind this facade is private. ABI
+versions are scoped per platform and architecture, with an explicit
+major-version refusal and tested minor-version extension behavior.
+This single bounded call or measured batch path keeps per-field
+FFI/allocator traffic out of the hot loop.
 
 ## 11. Platform policy
 
@@ -170,6 +287,20 @@ build under ASan/UBSan. These describe what a dispatched run verifies —
 they are not a continuous-verification claim. Hosted-runner compiler
 versions are not minimum-version promises. Platform-specific code is
 isolated from portable code.
+
+Portable semantics do not imply identical fault hooks, dump formats or
+fault-class coverage. Logging vocabulary, bounded event transport,
+install-health semantics and artifact manifest are common; Windows
+UCRT/SEH, Linux POSIX signal/core-dump facilities and macOS platform
+exception/report facilities are separately qualified backends. A Linux
+fatal signal handler obeys its async-signal-safety contract; Windows
+handler assumptions cannot be copied into it. Each OS/architecture
+advertises actual capture capabilities and grades in a versioned
+capability matrix. No platform is labeled crash-covered merely because
+the common headers compile or a Windows probe passes. A support claim
+requires a dispatched build and consumer test at the precise Windows,
+Linux and macOS candidate revisions and architectures actually
+claimed.
 
 ## 12. Testing law
 
@@ -187,6 +318,17 @@ configuration lives in `CMakePresets.json` and convenience tooling
 delegates to presets. Dependency resolution is workspace-resolved (the
 control-repository lock; see the README build section). IDE convenience
 must not compromise command-line, CI, or non-Windows builds.
+
+Foundation's CMake source of truth offers explicitly named static and
+shared distributions without accidentally placing duplicate
+process-global diagnostics instances in one address space. Build the
+selected variant with correct platform symbol visibility/import-export
+definitions, position-independent code where needed, transitive usage
+requirements, a relocatable install/export target and packaged runtime
+dependencies. A generated export header is a mechanical aid, not a
+declaration of ABI stability. The selected process service, linkage
+form and module ABI version are part of the workspace's exact
+candidate/build receipt.
 
 ## 14. Change rule
 
