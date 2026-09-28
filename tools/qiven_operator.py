@@ -1063,7 +1063,29 @@ def _sweep_exec_records(console: Console | None = None, *, quiet: bool = True) -
 
 
 def _toolchain() -> dict[str, str]:
+    # WR-8 (ADR-0052 doc 02, resolver-pattern removal): the toolchain
+    # root is obtained from the WorkspaceGeneration - the LOCATOR is
+    # env/sibling, the selected REVISION is the locked
+    # qiven-toolchain-win node, identity-checked before any gate task
+    # expands {cmake}/{ctest}/{clang-format} (the pre-WR-5 raw sibling
+    # locator is the forbidden "toolchain sibling fallback" class).
+    control = Path(os.environ.get("QIVEN_WORKSPACE_CONTROL",
+                                  ROOT.parent / "qiven-workspace")).resolve()
+    try:
+        lock = json.loads((control / "workspace.lock.json").read_text(encoding="utf-8-sig"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise OperatorError(f"workspace lock unreadable at {control}: {exc}") from exc
+    node = lock.get("nodes", {}).get("qiven-toolchain-win")
+    locked = node.get("commit") if isinstance(node, dict) else None
+    if not isinstance(locked, str) or len(locked) != 40:
+        raise OperatorError(f"workspace lock has no qiven-toolchain-win node commit ({control})")
     root = Path(os.environ.get("QIVEN_TOOLCHAIN_ROOT", ROOT.parent / "qiven-toolchain-win")).resolve()
+    probe = subprocess.run(["git", "-C", str(root), "rev-parse", "HEAD"],
+                           capture_output=True, text=True, check=False)
+    if probe.returncode != 0 or probe.stdout.strip() != locked:
+        found = probe.stdout.strip()[:12] if probe.returncode == 0 else "<unreadable>"
+        raise OperatorError(f"toolchain checkout at {found} != locked node {locked[:12]}; "
+                            "advance the workspace lock deliberately")
     manifest = root / "toolchain.json"
     if not manifest.is_file():
         raise OperatorError(f"toolchain manifest not found: {manifest}")
