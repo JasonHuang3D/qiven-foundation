@@ -19,6 +19,7 @@
 #include <qiven/platform.hpp>
 
 #include <atomic>
+#include <cerrno>
 #include <chrono>
 #include <condition_variable>
 #include <cstdio>
@@ -170,7 +171,14 @@ public:
 
     bool start() noexcept
     {
-        file_   = std::fopen(cfg_.file.path, "wb");
+        file_ = std::fopen(cfg_.file.path, "wb");
+        if (file_ == nullptr)
+        {
+            // observable open failure: every record without a configured
+            // fallback sink counts as a sink failure in health (never a
+            // silent all-green log loss)
+            sink_failures_.fetch_add(1, std::memory_order_relaxed);
+        }
         stop_   = false;
         writer_ = std::thread([this] { writer_loop(); });
         return true;
@@ -219,9 +227,14 @@ public:
     shutdown_result shutdown() noexcept
     {
         shutdown_result result;
-        stop_ = true;
+        const u64 drained_before = general_.drained() + critical_.drained();
+        stop_                    = true;
         general_.wake();
         critical_.wake();
+        {
+            std::lock_guard<std::mutex> lock(wakeup_mutex_);
+            wakeup_.notify_all(); // make the parked writer's exit immediate
+        }
         if (writer_.joinable())
         {
             writer_.join();
@@ -231,10 +244,10 @@ public:
             std::fclose(file_);
             file_ = nullptr;
         }
-        result.drained           = general_.drained() + critical_.drained();
+        result.drained           = (general_.drained() + critical_.drained()) - drained_before;
         result.leftover_general  = general_.occupancy();
         result.leftover_critical = critical_.occupancy();
-        result.writer_flushed    = true;
+        result.writer_flushed    = result.leftover_general == 0 && result.leftover_critical == 0;
         return result;
     }
 
@@ -246,6 +259,7 @@ public:
         snap.general_emitted     = general_.emitted();
         snap.critical_emitted    = critical_.emitted();
         snap.general_drained     = general_.drained();
+        snap.critical_drained    = critical_.drained();
         snap.general_occupancy   = general_.occupancy();
         snap.critical_occupancy  = critical_.occupancy();
         snap.sink_write_failures = sink_failures_.load(std::memory_order_relaxed);
@@ -288,8 +302,11 @@ private:
             }
             if (stop_.load(std::memory_order_relaxed))
             {
-                // bounded flush window: drain racers, then exit
-                for (int i = 0; i < 4096; ++i)
+                // bounded flush window: drain until empty or the
+                // configured shutdown budget expires (never a fixed
+                // pop count that abandons queued records silently)
+                const auto deadline = std::chrono::steady_clock::now() + cfg_.shutdown_flush_timeout;
+                while (std::chrono::steady_clock::now() < deadline)
                 {
                     if (!(critical_.try_pop(rec) || general_.try_pop(rec)))
                         break;
@@ -298,39 +315,59 @@ private:
                 writer_alive_.store(false, std::memory_order_relaxed);
                 return;
             }
-            std::this_thread::yield();
+            // idle: park on the wakeup CV (a bounded timeout keeps the
+            // exit path latency-bounded even against a missed notify;
+            // never a busy spin for the process lifetime)
+            {
+                std::unique_lock<std::mutex> lock(wakeup_mutex_);
+                wakeup_.wait_for(lock, std::chrono::milliseconds(20));
+            }
         }
     }
 
     void write_record(const stored_event& rec) noexcept
     {
-        char line[64 + max_message_bytes];
-        int n   = std::snprintf(line, sizeof(line),
-                                "{\"seq\":%llu,\"t\":%llu,\"sev\":\"%s\",\"id\":%u,\"src\":%u,\"corr\":%llu,\"msg\":\"%.*s\"}\n",
-                                static_cast<unsigned long long>(rec.sequence),
-                                static_cast<unsigned long long>(rec.timestamp_ns),
-                                to_string(static_cast<severity>(rec.level)).data(),
-                                rec.event_value, rec.source_value,
-                                static_cast<unsigned long long>(rec.correlation),
-                                static_cast<int>(rec.length), rec.message);
-        bool ok = n > 0;
-        if (ok && file_)
+        // 64 bytes of JSON framing + the 200-byte message budget + head
+        // room for the widest scalar renderings; the guard below makes
+        // the bound explicit rather than relying on the sizing alone
+        char line[512];
+        int n = std::snprintf(line, sizeof(line),
+                              "{\"seq\":%llu,\"t\":%llu,\"sev\":\"%s\",\"id\":%u,\"src\":%u,\"corr\":%llu,\"msg\":\"%.*s\"}\n",
+                              static_cast<unsigned long long>(rec.sequence),
+                              static_cast<unsigned long long>(rec.timestamp_ns),
+                              to_string(static_cast<severity>(rec.level)).data(),
+                              rec.event_value, rec.source_value,
+                              static_cast<unsigned long long>(rec.correlation),
+                              static_cast<int>(rec.length), rec.message);
+        // snprintf returns the WOULD-BE length; a truncated render still
+        // wrote sizeof-1 bytes and is a lawful bounded line
+        const int rendered = n;
+        if (n >= static_cast<int>(sizeof(line)))
+            n = static_cast<int>(sizeof(line)) - 1;
+        bool ok        = rendered > 0;
+        bool delivered = false;
+        if (file_ != nullptr)
         {
-            ok = std::fwrite(line, 1, static_cast<usize>(n), file_) == static_cast<usize>(n);
-            if (ok)
+            delivered = std::fwrite(line, 1, static_cast<usize>(n), file_) == static_cast<usize>(n);
+            if (delivered)
                 std::fflush(file_); // writer thread only; producers never flush
         }
-        if (ok && cfg_.stderr_sink)
+        else if (cfg_.stderr_sink || cfg_.debugger_sink)
         {
-            std::fwrite(line, 1, ok ? static_cast<usize>(n) : 0, stderr);
+            delivered = true; // a configured development sink takes the record
+        }
+        if (cfg_.stderr_sink)
+        {
+            std::fwrite(line, 1, static_cast<usize>(n), stderr);
         }
 #if QIVEN_PLATFORM_WINDOWS
-        if (ok && cfg_.debugger_sink)
+        if (cfg_.debugger_sink)
         {
+            line[n] = '\0';
             OutputDebugStringA(line);
         }
 #endif
-        if (!ok)
+        if (!ok || !delivered)
         {
             sink_failures_.fetch_add(1, std::memory_order_relaxed);
         }
@@ -338,24 +375,41 @@ private:
 
     void rotate() noexcept
     {
-        if (!file_)
+        rotations_.fetch_add(1, std::memory_order_relaxed);
+        if (file_ == nullptr)
+        {
             return;
+        }
         std::fclose(file_);
+        file_ = nullptr;
         // generation-shift rotation: root.log -> root.1.log ... bounded
-        // by cfg_.file.generations (oldest dropped)
+        // by cfg_.file.generations (oldest dropped); every failed
+        // rename/open is observable in health (sink failure counters)
         std::string root(cfg_.file.path);
         for (u32 gen = cfg_.file.generations; gen > 1; --gen)
         {
             std::string from = root + "." + std::to_string(gen - 1) + ".log";
             std::string to   = root + "." + std::to_string(gen) + ".log";
-            std::remove(to.c_str());
-            std::rename(from.c_str(), to.c_str());
+            if (std::remove(to.c_str()) != 0 && errno != ENOENT)
+            {
+                sink_failures_.fetch_add(1, std::memory_order_relaxed);
+            }
+            if (std::rename(from.c_str(), to.c_str()) != 0 && errno != ENOENT)
+            {
+                sink_failures_.fetch_add(1, std::memory_order_relaxed);
+            }
         }
         std::string first = root + ".1.log";
         std::remove(first.c_str());
-        std::rename(root.c_str(), first.c_str());
+        if (std::rename(root.c_str(), first.c_str()) != 0 && errno != ENOENT)
+        {
+            sink_failures_.fetch_add(1, std::memory_order_relaxed);
+        }
         file_ = std::fopen(root.c_str(), "wb");
-        rotations_.fetch_add(1, std::memory_order_relaxed);
+        if (file_ == nullptr)
+        {
+            sink_failures_.fetch_add(1, std::memory_order_relaxed);
+        }
     }
 
     bounded_lane general_, critical_;
@@ -365,6 +419,8 @@ private:
     crash_ring ring_;
     std::FILE* file_ = nullptr;
     std::thread writer_;
+    std::mutex wakeup_mutex_;
+    std::condition_variable wakeup_;
     std::atomic<bool> stop_ { false };
     std::atomic<bool> writer_alive_ { false };
     std::atomic<u64> next_sequence_ { 0 };

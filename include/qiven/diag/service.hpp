@@ -68,6 +68,7 @@ struct health_snapshot
     u64 general_emitted     = 0;
     u64 critical_emitted    = 0;
     u64 general_drained     = 0;
+    u64 critical_drained    = 0;
     u32 general_occupancy   = 0;
     u32 critical_occupancy  = 0;
     u64 sink_write_failures = 0;

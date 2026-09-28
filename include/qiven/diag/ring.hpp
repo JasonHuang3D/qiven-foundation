@@ -121,6 +121,11 @@ public:
         snapshot snap;
         if (max_entries > 64)
             max_entries = 64;
+        if (max_entries == 0)
+        {
+            snap.status = snapshot_status::empty; // degenerate window: nothing to copy
+            return snap;
+        }
         const u64 tickets = ticket_.load(std::memory_order_relaxed);
         if (tickets == 0)
         {
@@ -148,7 +153,10 @@ public:
                 continue;
             }
             ring_record copy = records_[i];
-            const u64 after  = seq.load(std::memory_order_relaxed);
+            // acquire on the validating load: prevents the compiler/CPU
+            // from hoisting it above the payload copy on weakly-ordered
+            // targets (a torn payload must never validate)
+            const u64 after = seq.load(std::memory_order_acquire);
             if (before != after || copy.sequence != before)
             {
                 ++torn; // changed under us

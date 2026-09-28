@@ -214,17 +214,14 @@ int main()
         auto snap = ring->capture_newest(32);
         if (snap.count == 0)
             return 22;
-        // unique event values in the snapshot window (unique sequences)
-        for (qiven::u32 a = 0; a < snap.count; ++a)
+        // strictly decreasing committed sequences in the newest-first
+        // window (the snapshot's ordering law; replaces the vacuous
+        // duplicate-id check - values are unique by construction)
+        for (qiven::u32 a = 0; a + 1 < snap.count; ++a)
         {
-            if (!snap.entries[a].stable)
-                continue;
-            for (qiven::u32 b = a + 1; b < snap.count; ++b)
+            if (snap.entries[a].stable && snap.entries[a + 1].stable && snap.entries[a].record.sequence <= snap.entries[a + 1].record.sequence)
             {
-                if (snap.entries[b].stable && snap.entries[a].record.event_value == snap.entries[b].record.event_value)
-                {
-                    return 23;
-                }
+                return 23;
             }
         }
         qiven::diag::shutdown();
@@ -235,6 +232,48 @@ int main()
         auto r = qiven::diag::shutdown();
         if (r.writer_flushed)
             return 24;
+    }
+
+    // 10. sink-open failure is OBSERVABLE: an unwritable root yields
+    // sink_write_failures > 0 in health (never silent all-green loss)
+    {
+        qiven::diag::service_config cfg = tiny_config(sink);
+        cfg.file.path                   = "no-such-dir/nested/x.log";
+        auto inst                       = qiven::diag::install(cfg);
+        if (!inst.ok)
+            return 25;
+        for (int i = 0; i < 20; ++i)
+        {
+            inst.host_emitter.emit(severity::error, event_id { (qiven::u32)i }, "lost-record");
+        }
+        auto h = qiven::diag::health();
+        if (h.sink_write_failures == 0)
+            return 26;
+        if (h.writer_alive == false)
+            return 27; // the writer keeps running; only the sink is gone
+        qiven::diag::shutdown();
+    }
+
+    // 11. rotation is exercised and observable: a tiny generation size
+    // rotates during the run and the rotation counter reports it
+    {
+        qiven::diag::service_config cfg = tiny_config(sink);
+        cfg.file.size_bound_bytes       = 2048;
+        cfg.file.generations            = 2;
+        auto inst                       = qiven::diag::install(cfg);
+        if (!inst.ok)
+            return 28;
+        for (int i = 0; i < 4000; ++i)
+        {
+            inst.host_emitter.emit(severity::info, event_id { (qiven::u32)(900000 + i) },
+                                   "rotation-filler-event-payload");
+        }
+        auto h = qiven::diag::health();
+        if (h.rotations == 0)
+            return 29;
+        qiven::diag::shutdown();
+        std::remove("diag-service-test.1.log");
+        std::remove("diag-service-test.2.log");
     }
 
     std::remove(sink);
