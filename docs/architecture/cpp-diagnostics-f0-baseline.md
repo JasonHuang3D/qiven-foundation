@@ -82,6 +82,16 @@ this baseline).
   introduces explicit export/hide, relocatable packaging and the
   external installed-package consumer probes (PR6 doc 02 section 4
   F1).
+- **F1-relevant residual (pre-existing, recorded for the F1 packaging
+  wave; not fixed at F0 per PR6 doc 02 section 4 "no need to refactor
+  every existing header")**: `CMakeLists.txt`'s
+  `QIVEN_FOUNDATION_PUBLIC_HEADERS` file set enumerates only 23 of the
+  27 public headers (`byte_builder.hpp`, `error.hpp`, `hashing.hpp`
+  absent from the set while `error.hpp`/`hashing.hpp` are PCH-included
+  later in the same file). Harmless to the current static build; a
+  future `install(FILES …)` over this set would silently drop three
+  public headers. F1's install/export work must reconcile the set
+  against the header census mechanically.
 - Real consumers today (repository-manifest declarations in the
   workspace control repository: qiven-runtime, qiven-context-draft and
   qiven-math each declare a `first-party-source` dependency on
@@ -101,10 +111,13 @@ Exactly ONE process-global state site exists in Foundation today:
   Debug-only `_CrtSetReportMode`/`_CrtSetReportFile` trio. On
   non-Windows the installer is a no-op.
 - No other mutable globals, statics or thread-locals exist in `src/`
-  (git-grep verified at the baseline; `src/contracts.cpp` and the
-  memory backends are stateless per-object; foundation.md §8's "no
-  mutable process-global default allocator" holds — the allocator is
-  an explicitly passed `AllocatorRef`).
+  (verified at the baseline by full read of all five translation
+  units; `src/contracts.cpp` is stateless, and the memory backends
+  (`LinearArena`, `OwnedAllocation`) are stateful PER OBJECT — bump
+  pointers and owned handles mutate per instance — but none of their
+  state is process-global; foundation.md §8's "no mutable
+  process-global default allocator" holds — the allocator is an
+  explicitly passed `AllocatorRef`).
 
 The current incident primitive's documented weaknesses (PR6 doc 01 §1)
 are the migration obligations: CRT `snprintf`/`strlen` on the fault
