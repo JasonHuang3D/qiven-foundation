@@ -1080,8 +1080,11 @@ def _toolchain() -> dict[str, str]:
     if not isinstance(locked, str) or len(locked) != 40:
         raise OperatorError(f"workspace lock has no qiven-toolchain-win node commit ({control})")
     root = Path(os.environ.get("QIVEN_TOOLCHAIN_ROOT", ROOT.parent / "qiven-toolchain-win")).resolve()
-    probe = subprocess.run(["git", "-C", str(root), "rev-parse", "HEAD"],
-                           capture_output=True, text=True, check=False)
+    try:
+        probe = subprocess.run(["git", "-C", str(root), "rev-parse", "HEAD"],
+                               capture_output=True, text=True, check=False)
+    except OSError as exc:
+        raise OperatorError(f"git unavailable for the toolchain identity check: {exc}") from exc
     if probe.returncode != 0 or probe.stdout.strip() != locked:
         found = probe.stdout.strip()[:12] if probe.returncode == 0 else "<unreadable>"
         raise OperatorError(f"toolchain checkout at {found} != locked node {locked[:12]}; "
