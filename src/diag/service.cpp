@@ -179,7 +179,11 @@ public:
             // silent all-green log loss)
             sink_failures_.fetch_add(1, std::memory_order_relaxed);
         }
-        stop_   = false;
+        stop_ = false;
+        // set liveness BEFORE spawning: health() racing thread start still
+        // reports the writer as running (alive = installed and not shut
+        // down; the loop clears it on exit)
+        writer_alive_.store(true, std::memory_order_relaxed);
         writer_ = std::thread([this] { writer_loop(); });
         return true;
     }
@@ -281,7 +285,6 @@ public:
 private:
     void writer_loop() noexcept
     {
-        writer_alive_.store(true, std::memory_order_relaxed);
         stored_event rec;
         u64 written_this_generation = 0;
         while (true)
