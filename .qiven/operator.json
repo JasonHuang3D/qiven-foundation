@@ -42,6 +42,9 @@
     },
     "apply-patch": {
       "argv": ["{python}", "tools/apply_patch.py"]
+    },
+    "f1-smoke": {
+      "argv": ["{python}", "tools/f1_packaging_smoke.py"]
     }
   },
   "gates": {
