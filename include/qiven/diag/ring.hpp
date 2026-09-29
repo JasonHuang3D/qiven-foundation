@@ -65,6 +65,23 @@ public:
     // global sequence. A writer preempted mid-write leaves an odd
     // (in-progress) sequence that snapshots report as torn, never as
     // complete.
+    //
+    // Commit guard: the closing store lands only while the slot still
+    // carries THIS writer's odd mark (compare_exchange). A writer
+    // preempted past a full ring wrap whose slot a later writer already
+    // re-committed cannot regress that slot's sequence — its commit is
+    // abandoned instead. Known envelope edge (recorded, bounded): the
+    // abandoned writer's payload stores may already have dirtied the
+    // successor's slot in the window before its CAS failure; the
+    // snapshot validation (sequence equality before/after + payload
+    // sequence cross-check) rejects every such mix EXCEPT the
+    // astronomically narrow case of a straddled copy that carries the
+    // successor's sequence field together with the abandoned writer's
+    // message bytes — a mixed record cannot be excluded in pure
+    // seqlock form; the I2 cross-process snapshot validator
+    // (digest-bound capsule) is the closing backstop, and the
+    // concurrent oracle below uses per-writer distinct text so any mix
+    // is detectable in testing.
     u64 write(const event& evt) noexcept
     {
         const u64 ticket      = ticket_.fetch_add(1, std::memory_order_relaxed);
@@ -91,7 +108,10 @@ public:
             std::memcpy(rec.message, evt.text.data(), rec.length);
         }
         rec.message[rec.length] = '\0';
-        seq.store(commit_seq, std::memory_order_release);
+        u64 expected = commit_seq - 1;
+        seq.compare_exchange_strong(expected, commit_seq,
+                                    std::memory_order_release,
+                                    std::memory_order_relaxed);
         return commit_seq;
     }
 

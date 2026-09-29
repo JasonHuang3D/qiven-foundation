@@ -520,9 +520,9 @@ service_config g_installed_config {};
 install_result install_result::already_installed() noexcept
 {
     install_result r;
-    r.ok      = false;
-    r.failure = "diag service already installed (one process-host service; "
-                "multiple static copies are a configuration error)";
+    r.ok = false;
+    r.set_failure("diag service already installed (one process-host service; "
+                  "multiple static copies are a configuration error)");
     return r;
 }
 
@@ -553,12 +553,14 @@ install_result install(const service_config& config)
     auto pow2 = [](u32 v) { return v != 0 && (v & (v - 1)) == 0; };
     if (!pow2(config.general_lane_slots) || !pow2(config.critical_lane_slots) || !pow2(config.ring_slots))
     {
-        result.ok      = false;
-        result.failure = "lane/ring slot counts must be powers of two";
+        result.ok = false;
+        result.set_failure("lane/ring slot counts must be powers of two");
         return result;
     }
     // the engine allocates (lanes/ring/writer); exhaustion is a typed
-    // failure, never a terminate out of a noexcept boundary
+    // failure, never a terminate out of a noexcept boundary; the reason
+    // text COPIES into the result's owned storage (an e.what() pointer
+    // would dangle at the catch boundary)
     detail::service_impl* impl = nullptr;
     try
     {
@@ -572,14 +574,14 @@ install_result install(const service_config& config)
     catch (const std::bad_alloc&)
     {
         delete impl;
-        result.ok      = false;
-        result.failure = "allocation failure";
+        result.ok = false;
+        result.set_failure("allocation failure");
     }
     catch (const std::exception& e)
     {
         delete impl; // start() failing before the writer ran: safe to free
-        result.ok      = false;
-        result.failure = e.what();
+        result.ok = false;
+        result.set_failure(e.what());
     }
     return result;
 }

@@ -136,9 +136,25 @@ private:
 
 struct install_result
 {
-    bool ok             = false;
-    const char* failure = nullptr; // typed reason when !ok
+    bool ok = false;
+    // typed reason when !ok — OWNED bounded storage (never a borrowed
+    // exception string: the exception object dies at the catch boundary
+    // and a dangling failure pointer is UB for the caller)
+    char failure_text[160] {};
+    const char* failure = nullptr; // points into failure_text when set
     emitter host_emitter {};       // valid when ok
+
+    void set_failure(const char* text) noexcept
+    {
+        u32 i = 0;
+        while (text != nullptr && text[i] != '\0' && i < sizeof(failure_text) - 1)
+        {
+            failure_text[i] = text[i];
+            ++i;
+        }
+        failure_text[i] = '\0';
+        failure = failure_text;
+    }
 
     [[nodiscard]] static install_result already_installed() noexcept;
 };

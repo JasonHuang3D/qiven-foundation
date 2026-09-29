@@ -9,6 +9,7 @@
 // measurement rig's counterexample probes + the I2 probe suite.
 // ============================================================================
 
+#include <qiven/crt_failure.hpp>
 #include <qiven/diag/service.hpp>
 
 #include <atomic>
@@ -39,6 +40,10 @@ static qiven::diag::service_config tiny_config(const char* path)
 
 int main()
 {
+    // modal-marathon law (2026-09-29): a test that can abort terminates
+    // headless with evidence + exit 3143 — never a modal CRT surface
+    qiven::install_headless_crt_failure_behavior();
+
     const char* sink = "diag-service-test.log";
 
     // 1. install once; a second install is a typed configuration error

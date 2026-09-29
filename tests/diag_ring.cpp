@@ -4,9 +4,16 @@
 // The seqlock snapshot protocol law: a torn record is never presented as
 // complete (doc 00 §4). Covered: empty snapshot; single/multi-writer
 // ordering; wraparound stability; concurrent write/snapshot stays valid
-// or degrades to partial (never a silent torn-complete).
+// or degrades to partial (never a silent torn-complete); per-writer
+// distinct text makes a MIXED (cross-writer straddled) record detectable.
+//
+// The headless CRT primitive is the FIRST statement (the 2026-09-29
+// modal-marathon law: a test that can abort must never open a modal CRT
+// surface on any machine — aborts terminate headless with evidence +
+// exit 3143 instead of awaiting a human click).
 // ============================================================================
 
+#include <qiven/crt_failure.hpp>
 #include <qiven/diag/ring.hpp>
 
 #include <atomic>
@@ -21,19 +28,21 @@ using qiven::diag::severity;
 
 static ring_record g_records[8];
 static std::atomic<qiven::u64> g_sequences[8];
-static crash_ring g_ring { g_records, g_sequences, 8 };
+static crash_ring g_ring{g_records, g_sequences, 8};
 
 static event make_event(qiven::u64 seq, const char* text)
 {
     event evt;
     evt.level = severity::info;
-    evt.id    = qiven::diag::event_id { static_cast<qiven::u32>(seq) };
-    evt.text  = text;
+    evt.id = qiven::diag::event_id{static_cast<qiven::u32>(seq)};
+    evt.text = text;
     return evt;
 }
 
 int main()
 {
+    qiven::install_headless_crt_failure_behavior();
+
     // 1. empty snapshot before any write
     {
         auto snap = g_ring.capture_newest(8);
@@ -86,20 +95,24 @@ int main()
 
     // 4. concurrent multi-writer + snapshotter: snapshot is valid or
     //    partial, every stable entry has a consistent record, and the
-    //    run completes (bounded, no locks taken by writers)
+    //    run completes (bounded, no locks taken by writers). Writers use
+    //    DISTINCT per-writer message text so a mixed (cross-writer
+    //    straddled) record would be DETECTABLE: a stable record must
+    //    carry exactly its own writer's tag, and its correlation must
+    //    match the tag's writer.
     {
-        std::atomic<bool> stop { false };
+        std::atomic<bool> stop{false};
         std::vector<std::thread> writers;
+        const char* tags[3] = {"writer-A-tag", "writer-B-tag", "writer-C-tag"};
         for (int w = 0; w < 3; ++w)
         {
-            writers.emplace_back([&stop, w] {
+            writers.emplace_back([&stop, w, &tags] {
                 qiven::u64 i = 0;
                 while (!stop.load(std::memory_order_relaxed))
                 {
-                    event evt = make_event(i++, "concurrent");
-                    evt.corr  = qiven::diag::correlation {
-                        static_cast<qiven::u64>(w + 1)
-                    };
+                    event evt = make_event(i++, tags[w]);
+                    evt.corr = qiven::diag::correlation{
+                        static_cast<qiven::u64>(w + 1)};
                     g_ring.write(evt);
                 }
             });
@@ -116,6 +129,22 @@ int main()
                     return 12; // torn must never be stable
                 if (snap.entries[i].record.length == 0)
                     return 13;
+                // per-writer consistency: the message tag selects the
+                // writer; the correlation field must agree (a mixed
+                // record carries one writer's tag with another's
+                // scalars and fails here)
+                const char* msg = snap.entries[i].record.message;
+                int writer = -1;
+                for (int w = 0; w < 3; ++w)
+                {
+                    if (std::strcmp(msg, tags[w]) == 0)
+                        writer = w;
+                }
+                if (writer < 0)
+                    return 20; // unknown/mixed message text
+                if (snap.entries[i].record.correlation
+                    != static_cast<qiven::u64>(writer + 1))
+                    return 21; // mixed record: tag/scalar mismatch
             }
             if (snap.status == crash_ring::snapshot_status::valid)
                 ++valid;
