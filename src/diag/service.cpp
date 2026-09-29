@@ -329,10 +329,9 @@ private:
         }
     }
 
-    void write_record(const stored_event& rec) noexcept
-        // Renders and delivers one record; returns the bytes written to the
-        // generation (the accounting input for rotation).
-        int write_record(const stored_event& rec) noexcept
+    // Renders and delivers one record; returns the bytes written to the
+    // generation (the accounting input for rotation).
+    int write_record(const stored_event& rec) noexcept
     {
         // 64 bytes of JSON framing + the 200-byte message budget + head
         // room for the widest scalar renderings; the guard below makes
