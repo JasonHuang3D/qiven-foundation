@@ -326,7 +326,7 @@ int main()
         {
             inst.host_emitter.emit(severity::info, event_id { (qiven::u32)(700000 + i) }, "y");
         }
-        auto r                  = qiven::diag::shutdown();
+        auto r                    = qiven::diag::shutdown();
         const qiven::u64 leftover = r.leftover_general + r.leftover_critical;
         if (r.writer_flushed != (leftover == 0))
             return 34;
