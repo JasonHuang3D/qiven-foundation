@@ -178,11 +178,13 @@ def run_consumer(cmake: str, variant: str, link_shared: bool, config: str,
 
     loader_proof = ""
     if link_shared and dumpbin is None:
-        # dumpbin unavailable: fallback proof — the DLL beside the exe
-        # (loader resolves it there) and the marker written by a run that
-        # emitted THROUGH the DLL
-        shutil.copy2(prefix / "bin" / "qiven-foundation-shared.dll", exe.parent)
-        loader_proof = "dll-beside-exe + run marker (dumpbin unavailable)"
+        # dumpbin unavailable: PATH-resolution proof only — the run below
+        # starts ONLY if the loader resolves the DLL from the installed
+        # prefix's bin (a failed resolution is a typed OS load error and
+        # fails this stage). NEVER copy the DLL into the build tree (a
+        # copy would both fake the relocation proof and shadow the
+        # prefix for later runs).
+        loader_proof = "PATH loader resolution from installed bin (dumpbin unavailable)"
 
     stage(f"consumer {name}: run (emit through the installed package)")
     run_checked(f"consumer {name}", [exe, sink, marker], timeout=180, cwd=run_dir,
@@ -201,8 +203,9 @@ def run_consumer(cmake: str, variant: str, link_shared: bool, config: str,
                 fail(f"consumer {name}",
                      "import table does not reference qiven-foundation-shared.dll")
             loader_proof = "dumpbin import table + loader resolution from installed bin"
-        elif not (exe.parent / "qiven-foundation-shared.dll").is_file():
-            fail(f"consumer {name}", "fallback loader proof DLL not beside the exe")
+        else:
+            ok(f"consumer {name}: loader proof downgraded (dumpbin unavailable); "
+               "the successful start under PATH=installed-bin is the resolution evidence")
     ok(f"consumer {name}: emit/one-writer/shutdown proven through the installed package"
        + (f" [{loader_proof}]" if loader_proof else ""))
 
@@ -291,7 +294,7 @@ def main() -> int:
     if dumpbin is not None:
         ok(f"loader proof tool: dumpbin ({dumpbin})")
     else:
-        ok("loader proof tool: dumpbin NOT found; using dll-beside-exe + marker fallback")
+        ok("loader proof tool: dumpbin NOT found; PATH loader-resolution proof only")
 
     for variant, link_shared, config, prefix_key in CONSUMER_MATRIX:
         run_consumer(cmake, variant, link_shared, config, prefix_key, prefixes, dumpbin)
@@ -300,11 +303,22 @@ def main() -> int:
                                  prefixes, args.overhead)
     shared_values = run_overhead(cmake, "shared", True, "Release", "release",
                                  prefixes, args.overhead)
+    # Budget (program doc 02 F1): static-vs-shared emit-overhead delta
+    # <= 10%. p50/mean are the evaluated rows; p99 at this magnitude is
+    # timer-quantum dominated (QPC ~100 ns) and is reported for
+    # observation, not gated.
+    p50_ratio = shared_values["p50"] / static_values["p50"] if static_values["p50"] else 0.0
+    mean_ratio = shared_values["mean"] / static_values["mean"] if static_values["mean"] else 0.0
     ok(f"overhead comparison (Release, n={args.overhead}): "
        f"static p50={static_values['p50']:.1f}ns mean={static_values['mean']:.1f}ns | "
        f"shared p50={shared_values['p50']:.1f}ns mean={shared_values['mean']:.1f}ns | "
-       f"ratio shared/static p50={shared_values['p50'] / static_values['p50']:.2f}x "
-       f"mean={shared_values['mean'] / static_values['mean']:.2f}x")
+       f"ratio shared/static p50={p50_ratio:.2f}x mean={mean_ratio:.2f}x "
+       f"(p99 {static_values['p99']:.0f}ns vs {shared_values['p99']:.0f}ns is "
+       f"timer-quantum scale at this magnitude - observed, not gated)")
+    if p50_ratio > 1.10 or mean_ratio > 1.10:
+        fail("overhead-budget",
+             f"shared/static overhead exceeds the 10% budget "
+             f"(p50 ratio {p50_ratio:.2f}x, mean ratio {mean_ratio:.2f}x)")
 
     ok("all stages green")
     return 0

@@ -1,6 +1,7 @@
 // ============================================================================
-// .generated-temp/f1-smoke/consumer-src/main.cpp — F1 packaging smoke
-// consumer (scratch, hand-authored; NOT part of the repository build).
+// tools/f1_smoke_consumer/main.cpp — F1 packaging smoke consumer
+// (TRACKED template; the driver materializes this file into an
+// out-of-tree consumer project under .generated-temp at run time).
 //
 // Consumes the INSTALLED qiven-foundation package through find_package:
 // installs the diag service with a sink path from argv, proves the
