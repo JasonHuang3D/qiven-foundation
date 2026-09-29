@@ -125,8 +125,9 @@ struct install_result
 
 // Process install (host-owned, once). Returns a typed failure on a
 // second install ("multiple static copies of the process service in one
-// process are a configuration error" — amended foundation.md §10).
-[[nodiscard]] install_result install(const service_config& config) noexcept;
+// process are a configuration error" — amended foundation.md §10), on
+// a non-power-of-two capacity, or on engine resource exhaustion.
+[[nodiscard]] install_result install(const service_config& config);
 
 // Shutdown with a bounded flush: drains both lanes until empty or the
 // configured timeout, then stops the writer and destroys the service.

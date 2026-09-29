@@ -72,6 +72,11 @@ public:
         const u64 commit_seq  = seq_source_.fetch_add(2, std::memory_order_relaxed) + 2;
         std::atomic<u64>& seq = sequences_[index];
         seq.store(commit_seq - 1, std::memory_order_relaxed); // odd: in progress
+        // release fence between the odd-marking store and the payload
+        // stores (standard seqlock writer idiom): without it, on weakly
+        // ordered targets a snapshotter can observe the new payload under
+        // the OLD committed sequence and validate a torn record
+        std::atomic_thread_fence(std::memory_order_release);
         ring_record& rec = records_[index];
         rec.sequence     = commit_seq;
         rec.timestamp_ns = evt.timestamp_ns;

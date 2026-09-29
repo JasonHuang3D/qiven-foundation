@@ -169,7 +169,9 @@ public:
     {
     }
 
-    bool start() noexcept
+    // may throw on engine resource exhaustion (thread spawn); the
+    // install() boundary converts that to a typed failure
+    bool start()
     {
         file_ = std::fopen(cfg_.file.path, "wb");
         if (file_ == nullptr)
@@ -294,8 +296,7 @@ private:
                 got = general_.try_pop(rec);
             if (got)
             {
-                write_record(rec);
-                written_this_generation += rec.length + 64;
+                written_this_generation += static_cast<u64>(write_record(rec));
                 if (written_this_generation >= cfg_.file.size_bound_bytes)
                 {
                     rotate();
@@ -329,6 +330,9 @@ private:
     }
 
     void write_record(const stored_event& rec) noexcept
+        // Renders and delivers one record; returns the bytes written to the
+        // generation (the accounting input for rotation).
+        int write_record(const stored_event& rec) noexcept
     {
         // 64 bytes of JSON framing + the 200-byte message budget + head
         // room for the widest scalar renderings; the guard below makes
@@ -343,11 +347,13 @@ private:
                               static_cast<unsigned long long>(rec.correlation),
                               static_cast<int>(rec.length), rec.message);
         // snprintf returns the WOULD-BE length; a truncated render still
-        // wrote sizeof-1 bytes and is a lawful bounded line
-        const int rendered = n;
+        // wrote sizeof-1 bytes and is a lawful bounded line; a negative
+        // (encoding error) render clamps to zero and counts as a failure
+        const bool ok = n > 0;
+        if (n < 0)
+            n = 0;
         if (n >= static_cast<int>(sizeof(line)))
             n = static_cast<int>(sizeof(line)) - 1;
-        bool ok        = rendered > 0;
         bool delivered = false;
         if (file_ != nullptr)
         {
@@ -373,7 +379,9 @@ private:
         if (!ok || !delivered)
         {
             sink_failures_.fetch_add(1, std::memory_order_relaxed);
+            return 0;
         }
+        return n;
     }
 
     void rotate() noexcept
@@ -466,7 +474,7 @@ void emitter::emit(severity level, event_id id, std::string_view text) const noe
     emit(evt);
 }
 
-install_result install(const service_config& config) noexcept
+install_result install(const service_config& config)
 {
     std::lock_guard<std::mutex> lock(g_service_mutex);
     install_result result;
@@ -481,18 +489,30 @@ install_result install(const service_config& config) noexcept
         result.failure = "lane/ring slot counts must be powers of two";
         return result;
     }
-    auto* impl = new (std::nothrow) detail::service_impl(config);
-    if (impl == nullptr)
+    // the engine allocates (lanes/ring/writer); exhaustion is a typed
+    // failure, never a terminate out of a noexcept boundary
+    detail::service_impl* impl = nullptr;
+    try
     {
+        impl = new detail::service_impl(config);
+        impl->start();
+        g_service           = impl;
+        g_installed_config  = config;
+        result.ok           = true;
+        result.host_emitter = impl->make_emitter(source_module { 1 });
+    }
+    catch (const std::bad_alloc&)
+    {
+        delete impl;
         result.ok      = false;
         result.failure = "allocation failure";
-        return result;
     }
-    impl->start();
-    g_service           = impl;
-    g_installed_config  = config;
-    result.ok           = true;
-    result.host_emitter = impl->make_emitter(source_module { 1 });
+    catch (const std::exception& e)
+    {
+        delete impl; // start() failing before the writer ran: safe to free
+        result.ok      = false;
+        result.failure = e.what();
+    }
     return result;
 }
 

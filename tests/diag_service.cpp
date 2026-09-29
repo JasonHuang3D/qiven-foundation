@@ -255,7 +255,8 @@ int main()
     }
 
     // 11. rotation is exercised and observable: a tiny generation size
-    // rotates during the run and the rotation counter reports it
+    // rotates during the run, the rotation counter reports it, and the
+    // rotated generation family exists on disk (root + ".N.log")
     {
         qiven::diag::service_config cfg = tiny_config(sink);
         cfg.file.size_bound_bytes       = 2048;
@@ -272,11 +273,67 @@ int main()
         if (h.rotations == 0)
             return 29;
         qiven::diag::shutdown();
-        std::remove("diag-service-test.1.log");
-        std::remove("diag-service-test.2.log");
+        std::FILE* rotated = std::fopen("diag-service-test.log.1.log", "rb");
+        if (rotated == nullptr)
+            return 30; // the rotated generation family must exist
+        std::fclose(rotated);
+        std::remove("diag-service-test.log.1.log");
+        std::remove("diag-service-test.log.2.log");
+    }
+
+    // 12. drop-oldest loss is OBSERVABLE: an 8-slot general lane under
+    // an 8-producer flood (enqueue far faster than the fflush-bound
+    // writer drains) must produce a nonzero dropped count
+    {
+        qiven::diag::service_config cfg = tiny_config(sink);
+        cfg.general_lane_slots          = 8;
+        auto inst                       = qiven::diag::install(cfg);
+        if (!inst.ok)
+            return 31;
+        {
+            std::vector<std::thread> producers;
+            for (int p = 0; p < 8; ++p)
+            {
+                producers.emplace_back([&, p] {
+                    for (int i = 0; i < 40000; ++i)
+                    {
+                        inst.host_emitter.emit(severity::info,
+                                               event_id { (qiven::u32)(p * 50000 + i) }, "x");
+                    }
+                });
+            }
+            for (auto& t : producers)
+                t.join();
+        }
+        auto h = qiven::diag::health();
+        if (h.general_dropped == 0)
+            return 32; // drop accounting must engage under real pressure
+        qiven::diag::shutdown();
+    }
+
+    // 13. shutdown accounting INVARIANT: writer_flushed is true iff no
+    // records remain queued (a zero flush timeout under load makes the
+    // leftover branch likely; the invariant is checked either way, so a
+    // regression that always reports flushed fails deterministically)
+    {
+        qiven::diag::service_config cfg = tiny_config(sink);
+        cfg.general_lane_slots          = 8;
+        cfg.shutdown_flush_timeout      = std::chrono::milliseconds(0);
+        auto inst                       = qiven::diag::install(cfg);
+        if (!inst.ok)
+            return 33;
+        for (int i = 0; i < 50000; ++i)
+        {
+            inst.host_emitter.emit(severity::info, event_id { (qiven::u32)(700000 + i) }, "y");
+        }
+        auto r             = qiven::diag::shutdown();
+        const u64 leftover = r.leftover_general + r.leftover_critical;
+        if (r.writer_flushed != (leftover == 0))
+            return 34;
     }
 
     std::remove(sink);
-    std::remove("diag-service-test.1.log");
+    std::remove("diag-service-test.log.1.log");
+    std::remove("diag-service-test.log.2.log");
     return 0;
 }
