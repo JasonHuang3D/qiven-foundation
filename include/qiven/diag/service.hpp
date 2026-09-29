@@ -123,10 +123,12 @@ struct install_result
     [[nodiscard]] static install_result already_installed() noexcept;
 };
 
-// Process install (host-owned, once). Returns a typed failure on a
-// second install ("multiple static copies of the process service in one
-// process are a configuration error" — amended foundation.md §10), on
-// a non-power-of-two capacity, or on engine resource exhaustion.
+// Process install (host-owned; ONE LIVE INSTANCE AT A TIME — a fresh
+// install after a completed shutdown is lawful). Returns a typed
+// failure when an instance is already live ("multiple static copies of
+// the process service in one process are a configuration error" —
+// amended foundation.md §10), on a non-power-of-two capacity, or on
+// engine resource exhaustion.
 [[nodiscard]] install_result install(const service_config& config);
 
 // Shutdown with a bounded flush: drains both lanes until empty or the

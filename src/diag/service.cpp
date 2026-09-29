@@ -169,6 +169,17 @@ public:
     {
     }
 
+    // the typed-failure path (thread spawn throwing after the sink
+    // opened) frees the impl: the sink handle must not leak
+    ~service_impl()
+    {
+        if (file_ != nullptr)
+        {
+            std::fclose(file_);
+            file_ = nullptr;
+        }
+    }
+
     // may throw on engine resource exhaustion (thread spawn); the
     // install() boundary converts that to a typed failure
     bool start()
@@ -314,7 +325,9 @@ private:
                 {
                     if (!(critical_.try_pop(rec) || general_.try_pop(rec)))
                         break;
-                    write_record(rec);
+                    // drain bytes count toward the generation budget too
+                    // (the final generation must not silently overshoot)
+                    written_this_generation += static_cast<u64>(write_record(rec));
                 }
                 writer_alive_.store(false, std::memory_order_relaxed);
                 return;
@@ -333,9 +346,65 @@ private:
     // generation (the accounting input for rotation).
     int write_record(const stored_event& rec) noexcept
     {
-        // 64 bytes of JSON framing + the 200-byte message budget + head
-        // room for the widest scalar renderings; the guard below makes
-        // the bound explicit rather than relying on the sizing alone
+        // JSON-escape the bounded payload first (quotes, backslash and
+        // control characters must never break the structured line);
+        // worst case every byte doubles, so the escape buffer is 2x
+        char escaped[2 * max_message_bytes + 1];
+        u32 escaped_len = 0;
+        for (u32 i = 0; i < rec.length && escaped_len + 2 < sizeof(escaped); ++i)
+        {
+            const char c = rec.message[i];
+            switch (c)
+            {
+            case '"':
+                escaped[escaped_len++] = '\\';
+                escaped[escaped_len++] = '"';
+                break;
+            case '\\':
+                escaped[escaped_len++] = '\\';
+                escaped[escaped_len++] = '\\';
+                break;
+            case '\n':
+                escaped[escaped_len++] = '\\';
+                escaped[escaped_len++] = 'n';
+                break;
+            case '\r':
+                escaped[escaped_len++] = '\\';
+                escaped[escaped_len++] = 'r';
+                break;
+            case '\t':
+                escaped[escaped_len++] = '\\';
+                escaped[escaped_len++] = 't';
+                break;
+            default:
+                if (static_cast<unsigned char>(c) < 0x20)
+                {
+                    // bounded \\u00XX form (4 hex digits)
+                    if (escaped_len + 6 >= sizeof(escaped))
+                        i = rec.length; // no room: drop the tail
+                    else
+                    {
+                        escaped[escaped_len++]  = '\\';
+                        escaped[escaped_len++]  = 'u';
+                        escaped[escaped_len++]  = '0';
+                        escaped[escaped_len++]  = '0';
+                        static const char hex[] = "0123456789abcdef";
+                        escaped[escaped_len++]  = hex[(c >> 4) & 0xF];
+                        escaped[escaped_len++]  = hex[c & 0xF];
+                    }
+                }
+                else
+                {
+                    escaped[escaped_len++] = c;
+                }
+                break;
+            }
+        }
+        escaped[escaped_len] = '\0';
+
+        // framing + the 200-byte payload budget (escaped up to 2x) +
+        // head room for the widest scalar renderings; the guard below
+        // makes the bound explicit rather than relying on the sizing
         char line[512];
         int n = std::snprintf(line, sizeof(line),
                               "{\"seq\":%llu,\"t\":%llu,\"sev\":\"%s\",\"id\":%u,\"src\":%u,\"corr\":%llu,\"msg\":\"%.*s\"}\n",
@@ -344,7 +413,7 @@ private:
                               to_string(static_cast<severity>(rec.level)).data(),
                               rec.event_value, rec.source_value,
                               static_cast<unsigned long long>(rec.correlation),
-                              static_cast<int>(rec.length), rec.message);
+                              static_cast<int>(escaped_len), escaped);
         // snprintf returns the WOULD-BE length; a truncated render still
         // wrote sizeof-1 bytes and is a lawful bounded line; a negative
         // (encoding error) render clamps to zero and counts as a failure
@@ -385,11 +454,11 @@ private:
 
     void rotate() noexcept
     {
-        rotations_.fetch_add(1, std::memory_order_relaxed);
         if (file_ == nullptr)
         {
-            return;
+            return; // no open generation: nothing rotated (counter untouched)
         }
+        rotations_.fetch_add(1, std::memory_order_relaxed);
         std::fclose(file_);
         file_ = nullptr;
         // generation-shift rotation: root.log -> root.1.log ... bounded

@@ -98,6 +98,45 @@ int main()
             return 9;
     }
 
+    // 3b. structured rendering: a payload carrying quotes, backslash and
+    //     a newline renders as ONE escaped JSON line (never splits the
+    //     record or breaks the structure)
+    {
+        auto inst = qiven::diag::install(tiny_config(sink));
+        if (!inst.ok)
+            return 40;
+        inst.host_emitter.emit(severity::warn, event_id { 4242 },
+                               "say \"hi\" \\ tail\nnewline");
+        auto sres = qiven::diag::shutdown();
+        if (!sres.writer_flushed)
+            return 41;
+        std::FILE* f = std::fopen(sink, "rb");
+        if (f == nullptr)
+            return 42;
+        char buffer[65536];
+        std::size_t n = std::fread(buffer, 1, sizeof(buffer) - 1, f);
+        std::fclose(f);
+        buffer[n] = '\0';
+        if (std::strstr(buffer, "\\\"hi\\\"") == nullptr)
+            return 43; // the quote must arrive ESCAPED
+        if (std::strstr(buffer, "\\\\ tail") == nullptr)
+            return 44; // the backslash must arrive ESCAPED
+        if (std::strstr(buffer, "\\ntail") != nullptr && std::strstr(buffer, "\\nnewline") == nullptr)
+            return 45; // the newline must arrive as the two-byte escape
+        // no raw newline inside the msg field: every physical line is a
+        // complete JSON record
+        int physical_lines = 0;
+        for (std::size_t i = 0; i < n; ++i)
+            if (buffer[i] == '\n')
+                ++physical_lines;
+        int json_opens = 0;
+        for (std::size_t i = 0; i + 1 < n; ++i)
+            if (buffer[i] == '{' && buffer[i + 1] == '"')
+                ++json_opens;
+        if (physical_lines != json_opens)
+            return 46; // a split record would open fewer objects than lines
+    }
+
     // 6. general-lane saturation: drop-oldest with observable loss; the
     //    producer never blocks unbounded (finite per doc 00 §4)
     {
