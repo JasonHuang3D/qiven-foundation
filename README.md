@@ -84,6 +84,10 @@ namespace).
 - Current architecture contract: [`docs/architecture/foundation.md`](docs/architecture/foundation.md)
 - Capability inventory (landed / admitted-not-yet-landed rows with headers
   and contracts): [`docs/architecture/capability-surface.yaml`](docs/architecture/capability-surface.yaml)
+- Diagnostics design (contract v1 + I2 crash-capture design, accepted
+  qiven-docs PR #9 2026-10-02; entry and landing map with provenance
+  receipt): [`docs/architecture/diagnostics/README.md`](docs/architecture/diagnostics/README.md)
+  — admitted-not-yet-landed; implementation starts at batch B00.
 - Engineering conventions and standards: canonical in the Devkit
   (`JasonHuang3D/qiven-devkit`, ADR-0046; `docs/conventions/README.md` and
   `docs/engineering/README.md` there).
