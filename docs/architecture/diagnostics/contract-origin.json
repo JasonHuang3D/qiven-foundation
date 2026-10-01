@@ -1,0 +1,51 @@
+{
+  "schema": "qiven.diag.contract-origin/1",
+  "source_pr": "https://github.com/JasonHuang3D/qiven-docs/pull/9",
+  "approved_head_sha": "d83ef223e70e36180e3931e995ad539670030f69",
+  "accepted_docs_commit": "17e350c678915b7e492ebe7f0f697eea188b2a6b",
+  "documents": [
+    {
+      "id": "D00",
+      "source_path": "accepted/2026-10-02/00-foundation-diagnostics-contract-v1.md",
+      "source_blob_sha": "6ed3c170390a3a4501da6975a73518d08980f43b",
+      "source_sha256": "4239dfd5e68d7f61aa26fc50268381e8da101c7adec16206c3b24eca889a7ee3",
+      "target_path": "docs/architecture/diagnostics/contract-v1.md",
+      "target_sha256": "9cae51b3667f5cf7bede2f16e7e2253324c66b5b2e53881e2752cb98d770f2c9"
+    },
+    {
+      "id": "D10",
+      "source_path": "accepted/2026-10-02/10-foundation-i2-entry-and-landing.md",
+      "source_blob_sha": "752b1af5050485a0cb33cae097e60a01f44bd740",
+      "source_sha256": "b134aa63424051322307089c287ef53d5d1f8c0d1d91e1ee1310093dbbc28f29",
+      "target_path": "docs/architecture/diagnostics/README.md",
+      "target_sha256": "d7814f8f23a87c119cdba0989e9d8bdf2b3659f33e27c0bc3411eefd16e25b58"
+    },
+    {
+      "id": "D11",
+      "source_path": "accepted/2026-10-02/11-foundation-i2-capture-design.md",
+      "source_blob_sha": "8b885bce4439b506169a54d529659ad39ad283db",
+      "source_sha256": "1a6ca7fac54e1f43ab63534e9842dd66aae3f1dd065cf503106e12a2db9c6d53",
+      "target_path": "docs/architecture/diagnostics/i2-capture.md",
+      "target_sha256": "1a6ca7fac54e1f43ab63534e9842dd66aae3f1dd065cf503106e12a2db9c6d53"
+    },
+    {
+      "id": "D12",
+      "source_path": "accepted/2026-10-02/12-foundation-i2-wire-and-artifacts.md",
+      "source_blob_sha": "73dbb8bbdb828177ae5196205b71c3c7f3f42fc2",
+      "source_sha256": "934a839c5dd8a5df3f24611c7bc278e61b5dcf621be52fb83c2756aa3ff7be76",
+      "target_path": "docs/architecture/diagnostics/i2-wire.md",
+      "target_sha256": "934a839c5dd8a5df3f24611c7bc278e61b5dcf621be52fb83c2756aa3ff7be76"
+    },
+    {
+      "id": "D13",
+      "source_path": "accepted/2026-10-02/13-foundation-i2-execution-and-acceptance.md",
+      "source_blob_sha": "30ec336a7c9e47243c38bb9b20b285596d127f67",
+      "source_sha256": "3a13d86aea9f4ddbb5de9704efdb3f9e3fbd31f737cbbe62421fbf82c315b32b",
+      "target_path": "docs/architecture/diagnostics/i2-execution.md",
+      "target_sha256": "3a13d86aea9f4ddbb5de9704efdb3f9e3fbd31f737cbbe62421fbf82c315b32b"
+    }
+  ],
+  "link_rewrite_version": 1,
+  "source_header_digests": {},
+  "private_seam_digest": "<filled at B00>"
+}

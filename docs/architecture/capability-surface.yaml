@@ -33,7 +33,7 @@ primitives:
   - {name: memory.observer, header: include/qiven/memory/observer.hpp, semantics: MemoryStats/AllocationObserver/ScopedMemoryWatch}
   - {name: memory.system_allocator, header: include/qiven/memory/system_allocator.hpp, semantics: system allocator adapter}
 known_gaps:
-  - {name: diag, status: admitted-not-yet-landed, decision: 'ADR-0059 + qiven-docs PR6 accepted 2026-09-29 (C++ diagnostics program): qiven::diag public contract - structured events, bounded producer encoding, process diagnostics initialization, crash-safe emergency evidence, capsule representation, platform-qualified crash client; F0 baseline at docs/architecture/cpp-diagnostics-f0-baseline.md; lands with I1/I2 after the I0 census/mechanism comparison'}
+  - {name: diag, status: admitted-not-yet-landed, decision: 'ADR-0059 + qiven-docs PR6 accepted 2026-09-29 (C++ diagnostics program): qiven::diag public contract - structured events, bounded producer encoding, process diagnostics initialization, crash-safe emergency evidence, capsule representation, platform-qualified crash client; F0 baseline at docs/architecture/cpp-diagnostics-f0-baseline.md; frozen contract v1 + I2 crash-capture detailed design accepted qiven-docs PR #9 2026-10-02 and landed at docs/architecture/diagnostics/ (entry README.md, provenance contract-origin.json); lands with I1/I2 starting at batch B00'}
 laws:
   - docs/architecture/foundation.md (mission, admission by semantic owner + first real consumer, dependency/representation/testing law; amended 2026-09-29 per ADR-0059 - evidence-based dependency admission, three-boundary ABI policy, platform/build clauses)
   - qiven-context decisions/ADR-0024.md (semantic ownership over consumer count)

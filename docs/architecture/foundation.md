@@ -8,7 +8,13 @@ targeted amendment 2026-09-29 per the accepted qiven-docs PR6 companion
 and ADR-0059 — the Section 3 dependency default, the Section 9
 representation appendix, the Section 10 ABI policy and the Sections
 11/13 platform/build clauses; the pre-amendment text at commit
-`5e3e018` is preserved by git history).
+`5e3e018` is preserved by git history; the operational diagnostics
+design — the frozen contract v1 public headers plus the I2
+crash-capture detailed design, accepted qiven-docs PR #9 on
+2026-10-02 — is landed at
+[docs/architecture/diagnostics/](diagnostics/README.md) with its
+provenance receipt `diagnostics/contract-origin.json`;
+admitted-not-yet-landed until implementation batch B00).
 Accepted Context decisions it executes: ADR-0024 (semantic ownership over
 consumer count), ADR-0008 (explicit ownership/failure/allocation),
 ADR-0009 (separate representation boundaries), ADR-0017 (semantic
