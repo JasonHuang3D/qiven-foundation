@@ -71,15 +71,30 @@ jobs:
 
               if not requested:
                   print("error: jobs must be 'full' or a comma-separated list of validation unit IDs", file=sys.stderr)
+                  print("  WHY: the plan is the typed admission surface - an empty", file=sys.stderr)
+                  print("  selection would validate nothing while appearing to run CI", file=sys.stderr)
+                  print("  (rule: foundation/ci-plan)", file=sys.stderr)
+                  print("  NEXT action: FIX - re-dispatch with jobs=full or the unit IDs", file=sys.stderr)
+                  print("  listed in the workflow's inputs description", file=sys.stderr)
                   sys.exit(1)
 
               if "full" in requested:
                   print("error: 'full' must be used by itself", file=sys.stderr)
+                  print("  WHY: 'full' expands to every unit; mixing it with explicit", file=sys.stderr)
+                  print("  IDs is ambiguous input, not a broader run", file=sys.stderr)
+                  print("  (rule: foundation/ci-plan)", file=sys.stderr)
+                  print("  NEXT action: FIX - re-dispatch with jobs=full alone, or list", file=sys.stderr)
+                  print("  only the explicit unit IDs you want", file=sys.stderr)
                   sys.exit(1)
 
               unknown = sorted(set(requested) - set(allowed))
               if unknown:
                   print(f"error: unknown validation unit(s): {', '.join(unknown)}", file=sys.stderr)
+                  print("  WHY: the plan is the typed admission surface - an unknown", file=sys.stderr)
+                  print("  unit would validate nothing while appearing to run CI", file=sys.stderr)
+                  print("  (rule: foundation/ci-plan)", file=sys.stderr)
+                  print("  NEXT action: FIX - correct the unit name(s); allowed IDs:", file=sys.stderr)
+                  print(f"  {', '.join(allowed)}", file=sys.stderr)
                   sys.exit(1)
 
               requested_set = set(requested)
@@ -310,22 +325,44 @@ jobs:
           set -euo pipefail
 
           if [[ "$PLAN_RESULT" != "success" ]]; then
-            echo "Validation plan failed."
+            echo "[FAIL] Validation plan failed: $PLAN_RESULT"
+            echo "  WHY: the plan is the typed admission surface - no unit can run"
+            echo "  from a rejected plan (rule: foundation/ci-gate)"
+            echo "  NEXT action: FIX - correct the jobs input per the plan error above"
+            echo "  and re-dispatch; a re-dispatch without a fix is not a retry."
             exit 1
           fi
 
           if [[ "$RUN_WINDOWS" == "true" && "$WINDOWS_RESULT" != "success" ]]; then
-            echo "Windows validation failed: $WINDOWS_RESULT"
+            echo "[FAIL] Windows validation failed: $WINDOWS_RESULT"
+            echo "  WHY: a requested validation unit did not succeed (rule:"
+            echo "  foundation/ci-gate - the gate conclusion is the enforcement)"
+            echo "  NEXT action: DIAGNOSE - open the Windows job's step logs (gh run"
+            echo "  view --log-failed), classify configure/build/test, fix it at"
+            echo "  this head, then re-dispatch; a re-dispatch without a fix is not"
+            echo "  a retry."
             exit 1
           fi
 
           if [[ "$RUN_UNIX" == "true" && "$UNIX_RESULT" != "success" ]]; then
-            echo "Unix validation failed: $UNIX_RESULT"
+            echo "[FAIL] Unix validation failed: $UNIX_RESULT"
+            echo "  WHY: a requested validation unit did not succeed (rule:"
+            echo "  foundation/ci-gate - the gate conclusion is the enforcement)"
+            echo "  NEXT action: DIAGNOSE - open the failed matrix leg's step logs"
+            echo "  (gh run view --log-failed), classify configure/build/test, fix"
+            echo "  it at this head, then re-dispatch; a re-dispatch without a fix"
+            echo "  is not a retry."
             exit 1
           fi
 
           if [[ "$RUN_CONTRACTS" == "true" && "$CONTRACTS_RESULT" != "success" ]]; then
-            echo "Contracts validation failed: $CONTRACTS_RESULT"
+            echo "[FAIL] Contracts validation failed: $CONTRACTS_RESULT"
+            echo "  WHY: a requested validation unit did not succeed (rule:"
+            echo "  foundation/ci-gate - the gate conclusion is the enforcement)"
+            echo "  NEXT action: DIAGNOSE - open the contracts job's step logs (gh"
+            echo "  run view --log-failed; sanitizer output classifies the"
+            echo "  failure), fix it at this head, then re-dispatch; a re-dispatch"
+            echo "  without a fix is not a retry."
             exit 1
           fi
 

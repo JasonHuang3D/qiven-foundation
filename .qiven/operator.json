@@ -27,6 +27,9 @@
     "b4-retirement-tests": {
       "argv": ["{python}", "tools/b4_retirement_test.py"]
     },
+    "b5-carrier-tests": {
+      "argv": ["{python}", "tools/b5_carrier_test.py"]
+    },
     "build-debug": {
       "argv": ["{cmake}", "--build", "--preset", "vs2022-x64-debug", "--parallel"]
     },
@@ -55,6 +58,7 @@
       "check-toolchain",
       "b3-carrier-tests",
       "b4-retirement-tests",
+      "b5-carrier-tests",
       "format-check",
       "configure",
       ["build-debug", "build-release"],
