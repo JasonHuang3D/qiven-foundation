@@ -39,3 +39,6 @@ compile_commands.json
 __pycache__/
 *.pyc
 .generated-temp/
+
+# diagnostics test sink artifacts
+diag-service-test*.log

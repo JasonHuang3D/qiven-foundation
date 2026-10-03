@@ -130,10 +130,10 @@ int main()
 
     // take(0) succeeds on empty and non-empty cursors (zero is always valid)
     {
-        qiven::ByteCursor empty { std::span<const std::byte>() };
-        if (!empty.take(0).has_value())
+        qiven::ByteCursor empty_cursor { std::span<const std::byte>() };
+        if (!empty_cursor.take(0).has_value())
             return 30;
-        if (!empty.empty())
+        if (!empty_cursor.empty())
             return 31;
         qiven::ByteCursor some { std::span<const std::byte>(payload.data(), payload.size()) };
         if (!some.take(0).has_value())
@@ -144,48 +144,48 @@ int main()
 
     // a failed take must NOT consume: retrying with a valid count still works
     {
-        qiven::ByteCursor cursor { std::span<const std::byte>(payload.data(), payload.size()) };
-        if (cursor.take(payload.size() + 1).has_value())
+        qiven::ByteCursor retry_cursor { std::span<const std::byte>(payload.data(), payload.size()) };
+        if (retry_cursor.take(payload.size() + 1).has_value())
             return 34;
-        if (cursor.remaining() != payload.size())
+        if (retry_cursor.remaining() != payload.size())
             return 35;
-        const auto retry = cursor.take(1);
+        const auto retry = retry_cursor.take(1);
         if (!retry.has_value() || retry->front() != payload[0])
             return 36;
     }
 
     // extreme count: SIZE_MAX compares safely and refuses without overflow
     {
-        qiven::ByteCursor cursor { std::span<const std::byte>(payload.data(), payload.size()) };
-        if (cursor.take(std::numeric_limits<usize>::max()).has_value())
+        qiven::ByteCursor extreme_cursor { std::span<const std::byte>(payload.data(), payload.size()) };
+        if (extreme_cursor.take(std::numeric_limits<usize>::max()).has_value())
             return 37;
-        if (cursor.remaining() != payload.size())
+        if (extreme_cursor.remaining() != payload.size())
             return 38;
     }
 
     // exact consumption lands on empty; one-past is refused
     {
-        qiven::ByteCursor cursor { std::span<const std::byte>(payload.data(), payload.size()) };
-        if (!cursor.take(payload.size()).has_value())
+        qiven::ByteCursor exact_cursor { std::span<const std::byte>(payload.data(), payload.size()) };
+        if (!exact_cursor.take(payload.size()).has_value())
             return 39;
-        if (!cursor.empty())
+        if (!exact_cursor.empty())
             return 40;
-        if (cursor.take(1).has_value())
+        if (exact_cursor.take(1).has_value())
             return 41;
     }
 
     // data integrity: taken spans view the original buffer bytes in order
     {
-        qiven::ByteCursor cursor { std::span<const std::byte>(payload.data(), payload.size()) };
+        qiven::ByteCursor integrity_cursor { std::span<const std::byte>(payload.data(), payload.size()) };
         for (std::size_t i = 0; i < payload.size(); ++i)
         {
-            const auto byte_span = cursor.take(1);
+            const auto byte_span = integrity_cursor.take(1);
             if (!byte_span.has_value())
                 return 42;
             if (byte_span->front() != payload[i])
                 return 43;
         }
-        if (!cursor.empty())
+        if (!integrity_cursor.empty())
             return 44;
     }
 

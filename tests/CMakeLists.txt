@@ -1,8 +1,8 @@
 function(qiven_enable_test_warnings target)
     if(MSVC)
-        target_compile_options(${target} PRIVATE /W4 /permissive- /utf-8 /MP)
+        target_compile_options(${target} PRIVATE /W4 /WX /permissive- /utf-8 /MP)
     else()
-        target_compile_options(${target} PRIVATE -Wall -Wextra -Wpedantic -Wconversion -Wsign-conversion)
+        target_compile_options(${target} PRIVATE -Wall -Wextra -Wpedantic -Wconversion -Wsign-conversion -Werror)
     endif()
 endfunction()
 
@@ -379,6 +379,38 @@ set_target_properties(
 
 add_test(NAME qiven-foundation.crt-failure COMMAND qiven-foundation-crt-failure)
 
+add_executable(qiven-foundation-diag-ring diag_ring.cpp)
+
+target_link_libraries(qiven-foundation-diag-ring PRIVATE qiven::foundation)
+qiven_enable_test_warnings(qiven-foundation-diag-ring)
+target_precompile_headers(qiven-foundation-diag-ring REUSE_FROM qiven-foundation)
+
+set_target_properties(
+    qiven-foundation-diag-ring
+    PROPERTIES
+        CXX_EXTENSIONS OFF
+        FOLDER "Tests"
+        VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+)
+
+add_test(NAME qiven-foundation.diag-ring COMMAND qiven-foundation-diag-ring)
+
+add_executable(qiven-foundation-diag-service diag_service.cpp)
+
+target_link_libraries(qiven-foundation-diag-service PRIVATE qiven::foundation)
+qiven_enable_test_warnings(qiven-foundation-diag-service)
+target_precompile_headers(qiven-foundation-diag-service REUSE_FROM qiven-foundation)
+
+set_target_properties(
+    qiven-foundation-diag-service
+    PROPERTIES
+        CXX_EXTENSIONS OFF
+        FOLDER "Tests"
+        VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+)
+
+add_test(NAME qiven-foundation.diag-service COMMAND qiven-foundation-diag-service)
+
 add_library(
     qiven-foundation-header-check
     OBJECT
@@ -388,6 +420,9 @@ add_library(
         headers/byte_builder.cpp
         headers/byte_cursor.cpp
         headers/byte_writer.cpp
+        headers/diag_event.cpp
+        headers/diag_ring.cpp
+        headers/diag_service.cpp
         headers/hashing.cpp
         headers/hashing_sha256.cpp
         headers/error.cpp

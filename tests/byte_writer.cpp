@@ -147,10 +147,10 @@ int main()
     // reserve(0) succeeds on empty and non-empty writers (zero is always valid)
     {
         std::array<std::byte, 4> buffer {};
-        qiven::ByteWriter empty { std::span<std::byte>(buffer.data(), 0) };
-        if (!empty.reserve(0).has_value())
+        qiven::ByteWriter empty_writer { std::span<std::byte>(buffer.data(), 0) };
+        if (!empty_writer.reserve(0).has_value())
             return 21;
-        if (!empty.empty())
+        if (!empty_writer.empty())
             return 22;
         qiven::ByteWriter some { std::span<std::byte>(buffer) };
         if (!some.reserve(0).has_value())
@@ -162,12 +162,12 @@ int main()
     // a failed reserve must NOT consume: retrying with a valid count works
     {
         std::array<std::byte, 4> buffer {};
-        qiven::ByteWriter writer { std::span<std::byte>(buffer) };
-        if (writer.reserve(buffer.size() + 1).has_value())
+        qiven::ByteWriter retry_writer { std::span<std::byte>(buffer) };
+        if (retry_writer.reserve(buffer.size() + 1).has_value())
             return 25;
-        if (writer.remaining() != buffer.size())
+        if (retry_writer.remaining() != buffer.size())
             return 26;
-        const auto retry = writer.reserve(1);
+        const auto retry = retry_writer.reserve(1);
         if (!retry.has_value() || retry->size() != 1)
             return 27;
         retry->front() = std::byte { 0x5A };
@@ -178,10 +178,10 @@ int main()
     // extreme count: SIZE_MAX compares safely and refuses without overflow
     {
         std::array<std::byte, 4> buffer {};
-        qiven::ByteWriter writer { std::span<std::byte>(buffer) };
-        if (writer.reserve(std::numeric_limits<usize>::max()).has_value())
+        qiven::ByteWriter extreme_writer { std::span<std::byte>(buffer) };
+        if (extreme_writer.reserve(std::numeric_limits<usize>::max()).has_value())
             return 29;
-        if (writer.remaining() != buffer.size())
+        if (extreme_writer.remaining() != buffer.size())
             return 30;
     }
 
@@ -189,17 +189,17 @@ int main()
     // and a reader over the same buffer sees exactly what was written
     {
         std::array<std::byte, 5> buffer {};
-        qiven::ByteWriter writer { std::span<std::byte>(buffer) };
+        qiven::ByteWriter ordering_writer { std::span<std::byte>(buffer) };
         for (std::size_t i = 0; i < buffer.size(); ++i)
         {
-            const auto slot = writer.reserve(1);
+            const auto slot = ordering_writer.reserve(1);
             if (!slot.has_value())
                 return 31;
             slot->front() = std::byte { static_cast<unsigned char>(0x10 * (i + 1)) };
         }
-        if (!writer.empty())
+        if (!ordering_writer.empty())
             return 32;
-        if (writer.reserve(1).has_value())
+        if (ordering_writer.reserve(1).has_value())
             return 33;
         qiven::ByteCursor readback { std::span<const std::byte>(buffer) };
         for (std::size_t i = 0; i < buffer.size(); ++i)
@@ -215,20 +215,20 @@ int main()
     // interleaved zero and non-zero reserves on one writer
     {
         std::array<std::byte, 3> buffer {};
-        qiven::ByteWriter writer { std::span<std::byte>(buffer) };
-        if (!writer.reserve(0).has_value())
+        qiven::ByteWriter interleaved_writer { std::span<std::byte>(buffer) };
+        if (!interleaved_writer.reserve(0).has_value())
             return 36;
-        const auto two = writer.reserve(2);
+        const auto two = interleaved_writer.reserve(2);
         if (!two.has_value())
             return 37;
         two->front() = std::byte { 1 };
-        if (!writer.reserve(0).has_value())
+        if (!interleaved_writer.reserve(0).has_value())
             return 38;
-        const auto last = writer.reserve(1);
-        if (!last.has_value())
+        const auto final_slot = interleaved_writer.reserve(1);
+        if (!final_slot.has_value())
             return 39;
-        last->front() = std::byte { 2 };
-        if (writer.reserve(1).has_value())
+        final_slot->front() = std::byte { 2 };
+        if (interleaved_writer.reserve(1).has_value())
             return 40; // exactly full now
         if (buffer[0] != std::byte { 1 } || buffer[1] != std::byte { 0 } || buffer[2] != std::byte { 2 })
             return 41; // the reserved spans wrote exactly where the test wrote them
