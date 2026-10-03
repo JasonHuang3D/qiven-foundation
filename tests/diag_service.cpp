@@ -321,12 +321,13 @@ int main()
         if (h.rotations == 0)
             return 29;
         qiven::diag::shutdown();
-        std::FILE* rotated = std::fopen("diag-service-test.log.1.log", "rb");
+        const std::string rotated_path = std::string(sink) + ".1.log";
+        std::FILE* rotated             = std::fopen(rotated_path.c_str(), "rb");
         if (rotated == nullptr)
             return 30; // the rotated generation family must exist
         std::fclose(rotated);
-        std::remove("diag-service-test.log.1.log");
-        std::remove("diag-service-test.log.2.log");
+        std::remove(rotated_path.c_str());
+        std::remove((std::string(sink) + ".2.log").c_str());
     }
 
     // 12. drop-oldest loss is OBSERVABLE: an 8-slot general lane under
