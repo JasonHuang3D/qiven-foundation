@@ -44,7 +44,11 @@ int main()
     // headless with evidence + exit 3143 — never a modal CRT surface
     qiven::install_headless_crt_failure_behavior();
 
-    const char* sink = "diag-service-test.log";
+#if defined(_DEBUG)
+    const char* sink = "diag-service-test-debug.log";
+#else
+    const char* sink = "diag-service-test-release.log";
+#endif
 
     // 1. install once; a second install is a typed configuration error
     auto first = qiven::diag::install(tiny_config(sink));
