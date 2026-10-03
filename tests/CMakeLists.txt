@@ -1,8 +1,8 @@
 function(qiven_enable_test_warnings target)
     if(MSVC)
-        target_compile_options(${target} PRIVATE /W4 /permissive- /utf-8 /MP)
+        target_compile_options(${target} PRIVATE /W4 /WX /permissive- /utf-8 /MP)
     else()
-        target_compile_options(${target} PRIVATE -Wall -Wextra -Wpedantic -Wconversion -Wsign-conversion)
+        target_compile_options(${target} PRIVATE -Wall -Wextra -Wpedantic -Wconversion -Wsign-conversion -Werror)
     endif()
 endfunction()
 

@@ -95,9 +95,9 @@ target_sources(
 )
 
 if(MSVC)
-    target_compile_options(qiven-foundation PRIVATE /W4 /permissive- /utf-8 /MP)
+    target_compile_options(qiven-foundation PRIVATE /W4 /WX /permissive- /utf-8 /MP)
 else()
-    target_compile_options(qiven-foundation PRIVATE -Wall -Wextra -Wpedantic -Wconversion -Wsign-conversion)
+    target_compile_options(qiven-foundation PRIVATE -Wall -Wextra -Wpedantic -Wconversion -Wsign-conversion -Werror)
 endif()
 
 if(CMAKE_GENERATOR MATCHES "^Visual Studio")
@@ -191,9 +191,9 @@ if(QIVEN_FOUNDATION_BUILD_SHARED)
     )
 
     if(MSVC)
-        target_compile_options(qiven-foundation-shared PRIVATE /W4 /permissive- /utf-8 /MP)
+        target_compile_options(qiven-foundation-shared PRIVATE /W4 /WX /permissive- /utf-8 /MP)
     else()
-        target_compile_options(qiven-foundation-shared PRIVATE -Wall -Wextra -Wpedantic -Wconversion -Wsign-conversion)
+        target_compile_options(qiven-foundation-shared PRIVATE -Wall -Wextra -Wpedantic -Wconversion -Wsign-conversion -Werror)
     endif()
 
     target_precompile_headers(
