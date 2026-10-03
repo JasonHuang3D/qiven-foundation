@@ -17,6 +17,7 @@
 #include <qiven/diag/ring.hpp>
 
 #include <atomic>
+#include <chrono>
 #include <cstring>
 #include <thread>
 #include <vector>
@@ -28,14 +29,14 @@ using qiven::diag::severity;
 
 static ring_record g_records[8];
 static std::atomic<qiven::u64> g_sequences[8];
-static crash_ring g_ring{g_records, g_sequences, 8};
+static crash_ring g_ring { g_records, g_sequences, 8 };
 
 static event make_event(qiven::u64 seq, const char* text)
 {
     event evt;
     evt.level = severity::info;
-    evt.id = qiven::diag::event_id{static_cast<qiven::u32>(seq)};
-    evt.text = text;
+    evt.id    = qiven::diag::event_id { static_cast<qiven::u32>(seq) };
+    evt.text  = text;
     return evt;
 }
 
@@ -101,59 +102,94 @@ int main()
     //    carry exactly its own writer's tag, and its correlation must
     //    match the tag's writer.
     {
-        std::atomic<bool> stop{false};
+        ring_record concurrent_records[8];
+        std::atomic<qiven::u64> concurrent_sequences[8];
+        crash_ring concurrent_ring {
+            concurrent_records, concurrent_sequences, 8
+        };
+        std::atomic<bool> stop { false };
+        std::atomic<int> writes { 0 };
         std::vector<std::thread> writers;
-        const char* tags[3] = {"writer-A-tag", "writer-B-tag", "writer-C-tag"};
+        const char* tags[3] = { "writer-A-tag", "writer-B-tag", "writer-C-tag" };
+        auto finish         = [&] {
+            stop.store(true, std::memory_order_relaxed);
+            for (auto& t : writers)
+                t.join();
+        };
         for (int w = 0; w < 3; ++w)
         {
-            writers.emplace_back([&stop, w, &tags] {
+            writers.emplace_back([&stop, &writes, w, &tags, &concurrent_ring] {
                 qiven::u64 i = 0;
                 while (!stop.load(std::memory_order_relaxed))
                 {
                     event evt = make_event(i++, tags[w]);
-                    evt.corr = qiven::diag::correlation{
-                        static_cast<qiven::u64>(w + 1)};
-                    g_ring.write(evt);
+                    evt.corr  = qiven::diag::correlation {
+                        static_cast<qiven::u64>(w + 1)
+                    };
+                    concurrent_ring.write(evt);
+                    writes.fetch_add(1, std::memory_order_relaxed);
                 }
             });
+        }
+        for (int wait = 0; wait < 100 && writes.load(std::memory_order_relaxed) == 0;
+             ++wait)
+        {
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
+        if (writes.load(std::memory_order_relaxed) == 0)
+        {
+            finish();
+            return 11;
         }
         int valid = 0, partial = 0;
         for (int s = 0; s < 2000; ++s)
         {
-            auto snap = g_ring.capture_newest(16);
+            auto snap = concurrent_ring.capture_newest(16);
             if (snap.status == crash_ring::snapshot_status::empty)
+            {
+                finish();
                 return 11;
+            }
             for (qiven::u32 i = 0; i < snap.count; ++i)
             {
                 if (!snap.entries[i].stable)
+                {
+                    finish();
                     return 12; // torn must never be stable
+                }
                 if (snap.entries[i].record.length == 0)
+                {
+                    finish();
                     return 13;
+                }
                 // per-writer consistency: the message tag selects the
                 // writer; the correlation field must agree (a mixed
                 // record carries one writer's tag with another's
                 // scalars and fails here)
                 const char* msg = snap.entries[i].record.message;
-                int writer = -1;
+                int writer      = -1;
                 for (int w = 0; w < 3; ++w)
                 {
                     if (std::strcmp(msg, tags[w]) == 0)
                         writer = w;
                 }
                 if (writer < 0)
+                {
+                    finish();
                     return 20; // unknown/mixed message text
-                if (snap.entries[i].record.correlation
-                    != static_cast<qiven::u64>(writer + 1))
+                }
+                if (snap.entries[i].record.correlation != static_cast<qiven::u64>(writer + 1))
+                {
+                    finish();
                     return 21; // mixed record: tag/scalar mismatch
+                }
             }
             if (snap.status == crash_ring::snapshot_status::valid)
                 ++valid;
             else
                 ++partial;
         }
-        stop.store(true, std::memory_order_relaxed);
-        for (auto& t : writers)
-            t.join();
+        finish();
         if (valid + partial != 2000)
             return 14;
     }

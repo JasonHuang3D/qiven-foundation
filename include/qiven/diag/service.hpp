@@ -153,7 +153,7 @@ struct install_result
             ++i;
         }
         failure_text[i] = '\0';
-        failure = failure_text;
+        failure         = failure_text;
     }
 
     [[nodiscard]] static install_result already_installed() noexcept;

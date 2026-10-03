@@ -66,9 +66,12 @@ int smoke_run(const char* sink, const char* marker) noexcept
         return fail("second install() did not fail typed");
 
     static const qiven::diag::severity levels[] = {
-        qiven::diag::severity::trace, qiven::diag::severity::debug,
-        qiven::diag::severity::info,  qiven::diag::severity::warn,
-        qiven::diag::severity::error, qiven::diag::severity::critical,
+        qiven::diag::severity::trace,
+        qiven::diag::severity::debug,
+        qiven::diag::severity::info,
+        qiven::diag::severity::warn,
+        qiven::diag::severity::error,
+        qiven::diag::severity::critical,
     };
     for (unsigned i = 0; i < 6; ++i)
     {
@@ -134,13 +137,12 @@ int overhead_run(unsigned count, const char* sink, const char* marker) noexcept
         QueryPerformanceCounter(&before);
         em.emit(qiven::diag::severity::info, qiven::diag::event_id { 7 }, "overhead probe");
         QueryPerformanceCounter(&after);
-        per_emit_ns[i] = static_cast<double>(after.QuadPart - before.QuadPart) * 1e9
-                         / static_cast<double>(frequency.QuadPart);
+        per_emit_ns[i] = static_cast<double>(after.QuadPart - before.QuadPart) * 1e9 / static_cast<double>(frequency.QuadPart);
     }
     std::sort(per_emit_ns.begin(), per_emit_ns.end());
     const double p50 = per_emit_ns[count / 2];
     const double p99 = per_emit_ns[(count * 99) / 100];
-    double total = 0.0;
+    double total     = 0.0;
     for (double v : per_emit_ns)
         total += v;
     std::printf("OVERHEAD n=%u p50=%.1fns p99=%.1fns mean=%.1fns\n", count, p50, p99,

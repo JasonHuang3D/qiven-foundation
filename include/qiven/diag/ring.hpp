@@ -84,11 +84,36 @@ public:
     // is detectable in testing.
     u64 write(const event& evt) noexcept
     {
-        const u64 ticket      = ticket_.fetch_add(1, std::memory_order_relaxed);
-        const u32 index       = static_cast<u32>(ticket & mask_);
-        const u64 commit_seq  = seq_source_.fetch_add(2, std::memory_order_relaxed) + 2;
-        std::atomic<u64>& seq = sequences_[index];
-        seq.store(commit_seq - 1, std::memory_order_relaxed); // odd: in progress
+        const u64 ticket                   = ticket_.fetch_add(1, std::memory_order_relaxed);
+        const u64 commit_seq               = seq_source_.fetch_add(2, std::memory_order_relaxed) + 2;
+        std::atomic<u64>* claimed_sequence = nullptr;
+        u32 index                          = 0;
+
+        // Claim a slot with CAS before touching its payload. A writer that
+        // loses a race or sees another writer in progress probes the next
+        // bounded slot; if every slot is busy, this record is dropped rather
+        // than corrupting a record owned by another writer.
+        for (u32 probe = 0; probe < capacity_; ++probe)
+        {
+            const u32 candidate                  = static_cast<u32>((ticket + probe) & mask_);
+            std::atomic<u64>& candidate_sequence = sequences_[candidate];
+            u64 expected                         = candidate_sequence.load(
+                std::memory_order_relaxed);
+            if ((expected & 1ULL) != 0)
+                continue;
+            if (candidate_sequence.compare_exchange_weak(
+                    expected, commit_seq - 1, std::memory_order_acquire,
+                    std::memory_order_relaxed))
+            {
+                claimed_sequence = &candidate_sequence;
+                index            = candidate;
+                break;
+            }
+        }
+        if (claimed_sequence == nullptr)
+            return 0;
+
+        std::atomic<u64>& seq = *claimed_sequence;
         // release fence between the odd-marking store and the payload
         // stores (standard seqlock writer idiom): without it, on weakly
         // ordered targets a snapshotter can observe the new payload under
@@ -108,10 +133,7 @@ public:
             std::memcpy(rec.message, evt.text.data(), rec.length);
         }
         rec.message[rec.length] = '\0';
-        u64 expected = commit_seq - 1;
-        seq.compare_exchange_strong(expected, commit_seq,
-                                    std::memory_order_release,
-                                    std::memory_order_relaxed);
+        seq.store(commit_seq, std::memory_order_release);
         return commit_seq;
     }
 
