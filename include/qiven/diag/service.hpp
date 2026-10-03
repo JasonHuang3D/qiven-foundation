@@ -93,6 +93,7 @@ struct health_snapshot
     u32 critical_occupancy  = 0;
     u64 sink_write_failures = 0;
     u64 rotations           = 0;
+    u64 ring_dropped        = 0; // bounded ring claim/reservation losses
     bool writer_alive       = false;
 };
 

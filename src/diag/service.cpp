@@ -165,7 +165,8 @@ public:
     cfg_(cfg),
     ring_records_(cfg.ring_slots),
     ring_sequences_(cfg.ring_slots),
-    ring_(ring_records_.data(), ring_sequences_.data(), cfg.ring_slots)
+    ring_states_(cfg.ring_slots),
+    ring_(ring_records_.data(), ring_sequences_.data(), ring_states_.data(), cfg.ring_slots)
     {
     }
 
@@ -281,6 +282,7 @@ public:
         snap.critical_occupancy  = critical_.occupancy();
         snap.sink_write_failures = sink_failures_.load(std::memory_order_relaxed);
         snap.rotations           = rotations_.load(std::memory_order_relaxed);
+        snap.ring_dropped        = ring_.dropped();
         snap.writer_alive        = writer_alive_.load(std::memory_order_relaxed);
         return snap;
     }
@@ -495,6 +497,7 @@ private:
     service_config cfg_;
     std::vector<ring_record> ring_records_;
     std::vector<std::atomic<u64>> ring_sequences_;
+    std::vector<std::atomic<u8>> ring_states_;
     crash_ring ring_;
     std::FILE* file_ = nullptr;
     std::thread writer_;
