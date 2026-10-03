@@ -154,6 +154,20 @@ u64 steady_ns() noexcept
                                 std::chrono::steady_clock::now().time_since_epoch())
                                 .count());
 }
+
+std::FILE* open_file(const char* path, const char* mode) noexcept
+{
+#if QIVEN_PLATFORM_WINDOWS
+    std::FILE* file = nullptr;
+    if (::fopen_s(&file, path, mode) != 0)
+    {
+        return nullptr;
+    }
+    return file;
+#else
+    return std::fopen(path, mode);
+#endif
+}
 } // namespace
 
 class detail::service_impl
@@ -185,7 +199,7 @@ public:
     // install() boundary converts that to a typed failure
     bool start()
     {
-        file_ = std::fopen(cfg_.file.path, "wb");
+        file_ = open_file(cfg_.file.path, "wb");
         if (file_ == nullptr)
         {
             // observable open failure: every record without a configured
@@ -486,7 +500,7 @@ private:
         {
             sink_failures_.fetch_add(1, std::memory_order_relaxed);
         }
-        file_ = std::fopen(root.c_str(), "wb");
+        file_ = open_file(root.c_str(), "wb");
         if (file_ == nullptr)
         {
             sink_failures_.fetch_add(1, std::memory_order_relaxed);
