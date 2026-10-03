@@ -207,7 +207,6 @@ int main()
         if (ring == nullptr)
             return 15;
         {
-            std::atomic<int> overflow_probe { 0 };
             std::vector<std::thread> producers;
             for (int p = 0; p < 4; ++p)
             {
