@@ -81,6 +81,7 @@ public:
     {
 #if QIVEN_ENABLE_MEMORY_OBSERVER
         allocation_failures_.fetch_add(1, std::memory_order_relaxed);
+        static_cast<void>(size);
 #else
         static_cast<void>(size);
 #endif

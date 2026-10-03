@@ -11,6 +11,7 @@
 
 #include <qiven/crt_failure.hpp>
 #include <qiven/diag/service.hpp>
+#include <qiven/platform.hpp>
 
 #include <atomic>
 #include <chrono>
@@ -24,6 +25,21 @@ using qiven::diag::correlation;
 using qiven::diag::event_id;
 using qiven::diag::severity;
 using qiven::diag::source_module;
+
+namespace
+{
+std::FILE* open_file(const char* path, const char* mode) noexcept
+{
+#if QIVEN_PLATFORM_WINDOWS
+    std::FILE* file = nullptr;
+    if (::fopen_s(&file, path, mode) != 0)
+        return nullptr;
+    return file;
+#else
+    return std::fopen(path, mode);
+#endif
+}
+} // namespace
 
 static qiven::diag::service_config tiny_config(const char* path)
 {
@@ -94,7 +110,7 @@ int main()
 
     // 5. the sink received the events (producer never flushed them)
     {
-        std::FILE* f = std::fopen(sink, "rb");
+        std::FILE* f = open_file(sink, "rb");
         if (f == nullptr)
             return 7;
         char buffer[65536];
@@ -116,10 +132,10 @@ int main()
             return 40;
         inst.host_emitter.emit(severity::warn, event_id { 4242 },
                                "say \"hi\" \\ tail\nnewline");
-        auto sres = qiven::diag::shutdown();
-        if (!sres.writer_flushed)
+        auto structured_shutdown = qiven::diag::shutdown();
+        if (!structured_shutdown.writer_flushed)
             return 41;
-        std::FILE* f = std::fopen(sink, "rb");
+        std::FILE* f = open_file(sink, "rb");
         if (f == nullptr)
             return 42;
         char buffer[65536];
@@ -171,7 +187,7 @@ int main()
         auto snap = qiven::diag::health();
         if (snap.general_emitted < 100000)
             return 13;
-        qiven::diag::shutdown();
+        static_cast<void>(qiven::diag::shutdown());
     }
 
     // 7. critical-lane saturation: bounded wait, then observable
@@ -226,7 +242,7 @@ int main()
         }
         if (!any_critical)
             return 19;
-        qiven::diag::shutdown();
+        static_cast<void>(qiven::diag::shutdown());
     }
 
     // 8. multithread producers through one service: no loss of liveness,
@@ -272,7 +288,7 @@ int main()
                 return 23;
             }
         }
-        qiven::diag::shutdown();
+        static_cast<void>(qiven::diag::shutdown());
     }
 
     // 9. shutdown of a non-installed service is a typed no-op
@@ -299,7 +315,7 @@ int main()
             return 26;
         if (h.writer_alive == false)
             return 27; // the writer keeps running; only the sink is gone
-        qiven::diag::shutdown();
+        static_cast<void>(qiven::diag::shutdown());
     }
 
     // 11. rotation is exercised and observable: a tiny generation size
@@ -320,9 +336,9 @@ int main()
         auto h = qiven::diag::health();
         if (h.rotations == 0)
             return 29;
-        qiven::diag::shutdown();
+        static_cast<void>(qiven::diag::shutdown());
         const std::string rotated_path = std::string(sink) + ".1.log";
-        std::FILE* rotated             = std::fopen(rotated_path.c_str(), "rb");
+        std::FILE* rotated             = open_file(rotated_path.c_str(), "rb");
         if (rotated == nullptr)
             return 30; // the rotated generation family must exist
         std::fclose(rotated);
@@ -357,7 +373,7 @@ int main()
         auto h = qiven::diag::health();
         if (h.general_dropped == 0)
             return 32; // drop accounting must engage under real pressure
-        qiven::diag::shutdown();
+        static_cast<void>(qiven::diag::shutdown());
     }
 
     // 13. shutdown accounting INVARIANT: writer_flushed is true iff no
